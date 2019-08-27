@@ -24,13 +24,25 @@ def get_validation_data(dataloader, pix2pix_model, limit=4):
 
 
 def calculate_mse_for_images(produced, target, simulate_n=-1):
-    fake_vector = produced.reshape(-1).astype(np.int16)
-    real_vector = target.reshape(-1).astype(np.int16)
-    mse_error = np.linalg.norm(fake_vector - real_vector) / (640 * 400)
+    assert produced.shape[-2:] == (640, 400)
+    assert target.shape[-2:] == (640, 400)
+    mse_error = 0
+    if len(produced.shape) == 2:
+        # We want it to have three dimensions
+        produced = np.array([produced])
+        target = np.array([target])
+
+    # We compute the norm for each image and then normalise it
+    batch_size = produced.shape[0]
+    for i in range(batch_size):
+        fake_vector = produced[i].reshape(-1).astype(np.int16)
+        real_vector = target[i].reshape(-1).astype(np.int16)
+        mse_error += np.linalg.norm(fake_vector - real_vector)
+    mse_error = mse_error / (640 * 400)
     # We always want to work with 1471 samples to have comparable errors
-    n = produced.shape[0]
+
     if simulate_n > 0:
-        mse_error = mse_error * simulate_n / n
+        mse_error = mse_error * simulate_n / batch_size
     return mse_error
 
 
