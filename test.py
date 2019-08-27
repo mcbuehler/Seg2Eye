@@ -8,6 +8,7 @@ import re
 from collections import OrderedDict
 
 import cv2
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -55,18 +56,32 @@ webpage = html.HTML(web_dir,
 
 # We have different behaviour for validation and test
 is_validation = opt.dataset_key == "validation"
+write_error_log = False
 
 # squared_losses_per_sample = {}
 filepaths = list()
-errors = {}
 
-# opt.how_many = 10
+if is_validation and write_error_log:
+    error_log = h5py.File(os.path.join(results_dir, "error_log.h5"), "w")
+    N = dataloader.dataset.N
+    error_log.create_dataset("error", shape=(N,), dtype=np.float)
+    error_log.create_dataset("user", shape=(N,), dtype='S4')
+    error_log.create_dataset("filename", shape=(N,), dtype='S13')
+    error_log.create_dataset("visualisation", shape=(N, 640, 1200), dtype=np.uint8)
 
+
+print("Running test script.")
+print(f"Is validation: {is_validation}")
+print(f"write error log: {write_error_log}")
+# opt.how_many = 250
+
+
+total_error = 0
 for i, data_i in enumerate(dataloader):
     if i * opt.batchSize >= opt.how_many:
         break
 
-    print(f"Processing batch {i} / {int(dataloader.dataset.N / opt.batchSize)}")
+    print(f"Processing batch {i} / {int(min(dataloader.dataset.N, opt.how_many) / opt.batchSize)}")
 
     generated = model(data_i, mode='inference')
 
@@ -76,33 +91,26 @@ for i, data_i in enumerate(dataloader):
 
     fake_images = ImagePreprocessor.unnormalize(np.copy(generated.detach().cpu()))
 
+    visualisations = list()
+    errors = list()
     for b in range(generated.shape[0]):
-        # print('process image... %s' % img_filename[b])
-        # visuals = OrderedDict([('input_label', data_i['label'][b]),
-        #                        ('synthesized_image', generated[b])])
-        # visualizer.save_images(webpage, visuals, img_filename[b:b + 1])
-
-        # target_tensor = ImagePreprocessor.unnormalize(data_i['image'][b])
-
-        # take the first channel
-        # fake_np = __resize(fake_images[b][0], 400, 640, cv2.INTER_LINEAR)
+        log_index = i * opt.batchSize + b
         fake_np = __resize(fake_images[b][0], 400, 640, cv2.INTER_NEAREST)
         # fake_np = fake_images[b][0]
         if is_validation:
             true_np = np.copy(data_i["image_original"][b].detach().cpu())
 
-            if False:
+            if write_error_log:
+                # We create visualisations
                 label_np = np.copy(data_i["label"][b][0].detach().cpu())
                 # label_np = __resize(label_np.astype(np.float), 400, 640, cv2.INTER_LINEAR).astype(np.uint)
                 label_np = __resize(label_np.astype(np.float), 400, 640, cv2.INTER_NEAREST).astype(np.uint)
                 label_np = label_np / np.max(label_np) * 255
-                # cat = np.concatenate([label_np, true_np, fake_np], axis=1)
-                # figure = Image.fromarray(cat)
-                # plt.imshow(figure)
-                # plt.show()
+                cat = np.concatenate([label_np, true_np, fake_np], axis=1)
+                visualisations.append(cat)
 
-            errors[img_filename[b]] = calculate_mse_for_images(fake_np, true_np)
-            # errors[img_filename[b]] = calculate_mse_for_images(fake_np, label_np)
+            error = calculate_mse_for_images(fake_np, true_np)
+            errors.append(error)
 
         else:
             # We are testing
@@ -110,30 +118,23 @@ for i, data_i in enumerate(dataloader):
             np.save(result_path, fake_np.astype(np.uint8))
             filepaths.append(result_path)
 
-        # plt.imshow(fake_np, cmap='gray')
-        # if 1:
-        #     plt.show()
-        # result_path_img = os.path.join(results_dir, img_filename[b] + ".png")
-        # plt.savefig(result_path_img)
-
-        # l_x = fake_tensor.shape[2]
-        # l_y = fake_tensor.shape[1]
-
-
-        # acc = openEDSaccuracy(fake_tensor, target_tensor)
-        # print(acc)
-        # squared_losses_per_sample[img_filename[b]] = acc
-
-        # nn.MSELoss()
-        # target = np.copy(data_i['image'][b][0].cpu())
-        # plt.imshow(np.copy(fake_tensor.detach().cpu())[0])
-        # plt.show()
-        # plt.imshow()
-        # plt.show()
+    if is_validation and write_error_log:
+        # We add the entire batch to the output file
+        error_log["user"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = np.array(data_i["user"], dtype='S4')
+        error_log["filename"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = np.array(data_i["filename"], dtype='S13')
+        error_log["error"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = errors
+        error_log["visualisation"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = visualisations
+    total_error += np.sum(errors)
 
 if is_validation:
-    print(errors)
-    print(f"Total error: {np.sum([e for e in errors.values()])}")
+    N_actual = min(i * opt.batchSize + opt.batchSize, dataloader.dataset.N)
+    print(f"Total error calculated on {N_actual} / {dataloader.dataset.N} samples: {total_error}")
+    # number in test set, this is the relative number we have to use in order to compare to the leaderboard
+    N_test = 1471
+    ratio = N_test / N_actual
+    print(f"Total error (relative to test set): {total_error * ratio}")
+    if write_error_log:
+        error_log.close()
 else:
     # We are testing
     print(filepaths)
