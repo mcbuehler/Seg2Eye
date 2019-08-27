@@ -4,6 +4,8 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 
 import importlib
+from copy import deepcopy
+
 import torch.utils.data
 from data.base_dataset import BaseDataset
 
@@ -52,3 +54,12 @@ def create_dataloader(opt):
         drop_last=opt.isTrain
     )
     return dataloader
+
+
+def create_inference_dataloader(opt, dataset_key='validation'):
+    # We copy and modify opt and use our existing function to create a dataloader
+    opt = deepcopy(opt)
+    opt.dataset_key = dataset_key
+    opt.serial_batches = True
+    opt.isTrain = False
+    return create_dataloader(opt)
