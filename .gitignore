@@ -5,3 +5,11 @@ results/
 *.zip
 *.pkl
 *.pyc
+
+OpenEDS*.json
+*.ttf
+*.png
+debug.py
+models/networks/Synchronized-BatchNorm-PyTorch/
+models/networks/sync_batchnorm/
+util/find_by_filename.py
