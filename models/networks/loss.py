@@ -118,3 +118,16 @@ class VGGLoss(nn.Module):
 class KLDLoss(nn.Module):
     def forward(self, mu, logvar):
         return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+
+def openEDSaccuracy(input, target):
+    input = input.int()
+    target = target.int()
+
+    diff = input - target
+    squared_diff = torch.mul(diff, diff)
+    _, h, w = squared_diff.shape
+    sum = torch.sum(squared_diff).float()
+    print(torch.sum(torch.abs(diff)))
+    accuracy = torch.sqrt(sum)
+    return accuracy
