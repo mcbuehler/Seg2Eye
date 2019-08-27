@@ -6,9 +6,14 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import os
 import ntpath
 import time
+
+from PIL import Image
+
 from . import util
 from . import html
 import scipy.misc
+import numpy as np
+
 try:
     from StringIO import StringIO  # Python 2.7
 except ImportError:
@@ -54,7 +59,13 @@ class Visualizer():
                     s = BytesIO()
                 if len(image_numpy.shape) >= 4:
                     image_numpy = image_numpy[0]
-                scipy.misc.toimage(image_numpy).save(s, format="jpeg")
+                if len(image_numpy.shape) == 3 and image_numpy.shape[0] == self.opt.batchSize:
+                    # We have a 2d image where first dimension is still batch size
+                    image_numpy = image_numpy[0, :, :, np.newaxis]
+                    image_numpy = np.repeat(image_numpy, 3, 2)
+
+                Image.fromarray(image_numpy).save(s, format="jpeg")
+                # scipy.misc.toimage(image_numpy).save(s, format="jpeg")
                 # Create an Image object
                 img_sum = self.tf.Summary.Image(encoded_image_string=s.getvalue(), height=image_numpy.shape[0], width=image_numpy.shape[1])
                 # Create a Summary value
