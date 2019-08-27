@@ -17,6 +17,7 @@ class IterationCounter():
         self.first_epoch = 1
         self.total_epochs = opt.niter + opt.niter_decay
         self.epoch_iter = 0  # iter number within each epoch
+        self.current_epoch = self.first_epoch
         self.iter_record_path = os.path.join(self.opt.checkpoints_dir, self.opt.name, 'iter.txt')
         if opt.isTrain and opt.continue_train:
             try:
@@ -28,6 +29,8 @@ class IterationCounter():
                       self.iter_record_path)
 
         self.total_steps_so_far = (self.first_epoch - 1) * dataset_size + self.epoch_iter
+        self.last_iter_time = time.time()
+        self.epoch_start_time = time.time()
 
     # return the iterator of epochs for the training
     def training_epochs(self):
