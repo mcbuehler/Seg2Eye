@@ -2,6 +2,7 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
+import traceback
 
 import torch
 import models.networks as networks
@@ -116,10 +117,17 @@ class Pix2PixModel(torch.nn.Module):
 
         # create one-hot label map
         label_map = data['label']
-        bs, _, h, w = label_map.size()
+        if len(label_map.size()) == 4:
+            # We have an image with several channels
+            bs, _, h, w = label_map.size()
+        else:
+            # We have a single channel image
+            bs, h, w = label_map.size()
         nc = self.opt.label_nc + 1 if self.opt.contain_dontcare_label \
             else self.opt.label_nc
         input_label = self.FloatTensor(bs, nc, h, w).zero_()
+        if torch.max(label_map) > 3:
+            print(f"torch.max(label_map) is more than 3: {torch.max(label_map)} here: {data['filename']}")
         input_semantics = input_label.scatter_(1, label_map, 1.0)
 
         # concatenate instance map if it exists
