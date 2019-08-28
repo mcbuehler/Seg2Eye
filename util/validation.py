@@ -11,7 +11,9 @@ from util.visualizer import visualize_sidebyside
 
 def get_validation_data(dataloader, pix2pix_model, limit=4):
     result = {"fake": list(), "content": list(), "target": list(), "target_original": list()}
-    for i_val, data_val in enumerate(dataloader):
+    validation_indices = dataloader.dataset.get_validation_indices()[:limit]
+    for i_val in validation_indices:
+        data_val = dataloader.dataset[i_val]
         # 1st component: generated image
         result["fake"].append(pix2pix_model.forward(data_val, mode="inference").cpu())
         # 2nd component: input segmentation mask
@@ -19,8 +21,6 @@ def get_validation_data(dataloader, pix2pix_model, limit=4):
         # 3rd component: ground truth image
         result["target"].append(data_val['image'])
         result["target_original"].append(data_val['image_original'])
-        if i_val > limit > 0:
-            break
     return result
 
 
