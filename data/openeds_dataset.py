@@ -103,7 +103,7 @@ class OpenEDSDataset(BaseDataset):
         # the toTensor method in transform will convert uint8 [0, 255] to foat [-1, 1], so we need to revert this.
         mask_tensor = transform_mask(mask) * 255.0
         # This is the image that we should be producing. We feed it to D.
-        if self.dataset_key == "test":
+        if self.dataset_key == "test" or self.dataset_key == "validation":
             # We take a random image from the user as input
             style_img_idx = np.random.choice(list(range(self.h5_in[user]["images_ss"].shape[0])))
             target_image = self.h5_in[user]["images_ss"][style_img_idx]

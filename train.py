@@ -46,9 +46,9 @@ visualizer = Visualizer(opt)
 summary_directory = os.path.join(opt.checkpoints_dir, opt.name, "tensorboard")
 writer = SummaryWriter(summary_directory)
 
-# opt.display_freq = 1
-# opt.print_freq = 1
-# opt.validation_limit = 5
+opt.display_freq = 1
+opt.print_freq = 1
+opt.validation_limit = 5
 
 try:
     for epoch in iter_counter.training_epochs():

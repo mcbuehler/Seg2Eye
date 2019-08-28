@@ -112,17 +112,20 @@ class Pix2PixModel(torch.nn.Module):
         data['label'] = data['label'].long()
         if self.use_gpu():
             data['label'] = data['label'].cuda()
-            data['instance'] = data['instance'].cuda()
             data['image'] = data['image'].cuda()
+            if not self.opt.no_instance:
+                data['instance'] = data['instance'].cuda()
 
         # create one-hot label map
         label_map = data['label']
-        if len(label_map.size()) == 4:
+        if len(label_map.shape) == 3:
+            label_map = label_map.unsqueeze(0)
+        # if len(label_map.size()) == 4:
             # We have an image with several channels
-            bs, _, h, w = label_map.size()
-        else:
-            # We have a single channel image
-            bs, h, w = label_map.size()
+        bs, _, h, w = label_map.size()
+        # else:
+        #     We have a single channel image
+            # bs, h, w = label_map.size()
         nc = self.opt.label_nc + 1 if self.opt.contain_dontcare_label \
             else self.opt.label_nc
         input_label = self.FloatTensor(bs, nc, h, w).zero_()

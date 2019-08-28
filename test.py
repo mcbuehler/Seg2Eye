@@ -43,26 +43,19 @@ else:
     opt.checkpoints_dir = os.path.join(base_path, opt.checkpoints_dir)
 
 
-results_dir = os.path.join(opt.checkpoints_dir, opt.name, opt.results_dir)
-# create a webpage that summarizes the all results
-web_dir = os.path.join(opt.checkpoints_dir, opt.name, "web",
-                       '%s_%s' % (opt.phase, opt.which_epoch))
+results_dir = os.path.join(opt.checkpoints_dir, opt.name, opt.results_dir, opt.dataset_key)
 if not os.path.exists(results_dir):
     os.mkdir(results_dir)
 
-webpage = html.HTML(web_dir,
-                    'Experiment = %s, Phase = %s, Epoch = %s' %
-                    (opt.name, opt.phase, opt.which_epoch))
 
 # We have different behaviour for validation and test
-is_validation = opt.dataset_key == "validation"
-write_error_log = False
+is_validation = opt.dataset_key in [ "validation", "train"]
 
 # squared_losses_per_sample = {}
 filepaths = list()
 
-if is_validation and write_error_log:
-    error_log = h5py.File(os.path.join(results_dir, "error_log.h5"), "w")
+if is_validation and opt.write_error_log:
+    error_log = h5py.File(os.path.join(results_dir, f"error_log_{opt.dataset_key}.h5"), "w")
     N = dataloader.dataset.N
     error_log.create_dataset("error", shape=(N,), dtype=np.float)
     error_log.create_dataset("user", shape=(N,), dtype='S4')
@@ -71,8 +64,8 @@ if is_validation and write_error_log:
 
 
 print("Running test script.")
-print(f"Is validation: {is_validation}")
-print(f"write error log: {write_error_log}")
+print(f"Is validation: {is_validation}. Dataset_key: {opt.dataset_key}")
+print(f"write error log: {opt.write_error_log}")
 # opt.how_many = 250
 
 
@@ -100,7 +93,7 @@ for i, data_i in enumerate(dataloader):
         if is_validation:
             true_np = np.copy(data_i["image_original"][b].detach().cpu())
 
-            if write_error_log:
+            if opt.write_error_log:
                 # We create visualisations
                 label_np = np.copy(data_i["label"][b][0].detach().cpu())
                 # label_np = __resize(label_np.astype(np.float), 400, 640, cv2.INTER_LINEAR).astype(np.uint)
@@ -118,7 +111,7 @@ for i, data_i in enumerate(dataloader):
             np.save(result_path, fake_np.astype(np.uint8))
             filepaths.append(result_path)
 
-    if is_validation and write_error_log:
+    if is_validation and opt.write_error_log:
         # We add the entire batch to the output file
         error_log["user"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = np.array(data_i["user"], dtype='S4')
         error_log["filename"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = np.array(data_i["filename"], dtype='S13')
@@ -127,13 +120,14 @@ for i, data_i in enumerate(dataloader):
     total_error += np.sum(errors)
 
 if is_validation:
+    error_log.create_dataset("error_relative_n1471", data=np.multiply(error_log["error"], 1471), dtype=np.float)
     N_actual = min(i * opt.batchSize + opt.batchSize, dataloader.dataset.N)
     print(f"Total error calculated on {N_actual} / {dataloader.dataset.N} samples: {total_error}")
     # number in test set, this is the relative number we have to use in order to compare to the leaderboard
     N_test = 1471
     ratio = N_test / N_actual
     print(f"Total error (relative to test set): {total_error * ratio}")
-    if write_error_log:
+    if opt.write_error_log:
         error_log.close()
 else:
     # We are testing
@@ -143,7 +137,4 @@ else:
         for line in filepaths:
             f.write(line)
             f.write(os.linesep)
-# estimated_error = np.sum(squared_losses_per_sample.values())
-# print(f"Estimated error: {estimated_error}")
-webpage.save()
-
+    print("Done")
