@@ -15,7 +15,7 @@ import util.validation as validation
 import data
 from util.image_annotate import get_text_image
 from util.iter_counter import IterationCounter
-from util.visualizer import Visualizer
+from util.visualizer import Visualizer, visualize_sidebyside
 from trainers.pix2pix_trainer import Pix2PixTrainer
 from tensorboardX.writer import SummaryWriter
 import os
@@ -75,10 +75,10 @@ try:
                 visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
 
             if iter_counter.needs_displaying():
-                visuals = OrderedDict([('input_label', data_i['label']),
-                                       ('synthesized_image', trainer.get_latest_generated()),
-                                       ('real_image', data_i['image'])])
-                visualizer.display_current_results(visuals, epoch, iter_counter.total_steps_so_far)
+                data_visuals = {'content': data_i['label'],
+                                       'fake': trainer.get_latest_generated(),
+                                       'target': data_i['image']}
+                visualize_sidebyside(data_visuals, visualizer, epoch, iter_counter.total_steps_so_far, limit=8, log_key='train')
 
                 # Output VALIDATION images
                 validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit)

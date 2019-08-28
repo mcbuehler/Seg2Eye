@@ -6,6 +6,7 @@ import numpy as np
 from data.base_dataset import __resize
 from data.preprocessor import ImagePreprocessor
 from util.image_annotate import get_text_image
+from util.visualizer import visualize_sidebyside
 
 
 def get_validation_data(dataloader, pix2pix_model, limit=4):
@@ -65,31 +66,8 @@ def plot_mse(data, visualizer, epoch, total_steps_so_far, limit=-1):
     visualizer.plot_current_errors(errors, total_steps_so_far)
 
 
-def visualize(data, visualizer, epoch, total_steps_so_far, limit=-1):
-    # Validation results
-    visuals_val = list()
-    for i in range(len(data["fake"])):
-        content_val = data["content"][i]
-        fake_val = data["fake"][i]
-        target_val = data["target"][i]
-        # Create image
-        cat_val = torch.cat((content_val, target_val, fake_val), dim=3)
-        # TODO: solve issue with getting font
-        # # 4th component: text annotation with metadata
-        # text_val = get_text_image(f'{data_val["user"][0]}/{data_val["filename"][0]}', dim=(cat_val.shape[3], 50))
-        # text_val = torch.as_tensor([[text_val]])
-        # cat_val = torch.cat((cat_val, text_val), dim=2)
-        #
-        visuals_val.append((f'val/{i}', cat_val))
-        if i > limit > 0:
-            break
-
-    visuals_val = OrderedDict(visuals_val)
-    visualizer.display_current_results(visuals_val, epoch, total_steps_so_far)
-
-
 def run_validation(dataloader, pix2pix_model, visualizer, epoch, iter_counter, limit=500, visualisation_limit=4):
     print(f"Running validation on {limit} images")
     data = get_validation_data(dataloader, pix2pix_model, limit=limit)
-    visualize(data, visualizer, epoch, iter_counter.total_steps_so_far, limit=visualisation_limit)
+    visualize_sidebyside(data, visualizer, epoch, iter_counter.total_steps_so_far, limit=visualisation_limit, log_key='val')
     plot_mse(data, visualizer, epoch, iter_counter.total_steps_so_far, limit=limit)

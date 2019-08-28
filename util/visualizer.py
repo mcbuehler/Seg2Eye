@@ -6,7 +6,9 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import os
 import ntpath
 import time
+from collections import OrderedDict
 
+import torch
 from PIL import Image
 
 from . import util
@@ -18,6 +20,7 @@ try:
     from StringIO import StringIO  # Python 2.7
 except ImportError:
     from io import BytesIO         # Python 3.x
+
 
 class Visualizer():
     def __init__(self, opt):
@@ -168,3 +171,29 @@ class Visualizer():
             txts.append(label)
             links.append(image_name)
         webpage.add_images(ims, txts, links, width=self.win_size)
+
+
+def visualize_sidebyside(data, visualizer, epoch, total_steps_so_far, limit=-1, key_fake='fake', key_content='content', key_target='target', log_key=''):
+    # Validation results
+    visuals_val = list()
+    for i in range(len(data[key_fake])):
+        # Content val is between 0 and 3 -- do normalize
+        content_val = data[key_content][i].detach().cpu()
+        content_val = content_val / torch.max(content_val)
+        fake_val = data[key_fake][i].detach().cpu()
+        target_val = data[key_target][i].detach().cpu()
+        # Create image
+        dim = len(content_val.shape) - 1
+        cat_val = torch.cat((content_val, target_val, fake_val), dim=dim)
+        # TODO: solve issue with getting font
+        # # 4th component: text annotation with metadata
+        # text_val = get_text_image(f'{data_val["user"][0]}/{data_val["filename"][0]}', dim=(cat_val.shape[3], 50))
+        # text_val = torch.as_tensor([[text_val]])
+        # cat_val = torch.cat((cat_val, text_val), dim=2)
+        #
+        visuals_val.append((f'{log_key}/{i}', cat_val))
+        if i > limit > 0:
+            break
+
+    visuals_val = OrderedDict(visuals_val)
+    visualizer.display_current_results(visuals_val, epoch, total_steps_so_far)
