@@ -8,16 +8,22 @@ import pandas as pd
 n = 100
 
 # path_results = "/home/marcel/projects/SPADE_custom/checkpoints/190823_spade__use_vae/results/"
-path_results = "/home/marcel/projects/SPADE_custom/checkpoints/190823_spade/results/"
-path_error_log = os.path.join(path_results, "error_log.h5")
-folder_validation_results = os.path.join(path_results, "validation_visualisations")
+
+dataset_key = "train"
+# dataset_key = "validation"
+name = "190823_spade"
+checkpoints_dir = "/home/marcel/projects/SPADE_custom/checkpoints/"
+path_results = os.path.join(checkpoints_dir, name, "results", dataset_key)
+path_error_log = os.path.join(path_results, f"error_log_{dataset_key}.h5")
+folder_validation_results = os.path.join(path_results, "visualisations")
 if not os.path.exists(folder_validation_results):
-    os.mkdir(folder_validation_results)
+    os.makedirs(folder_validation_results)
 
 error_log = h5py.File(path_error_log, 'r')
 
 
 def select_n(best=True, n=20):
+    print(f"Selecting {n}. Best: {best}")
     if best:
         idx_selected = (np.copy(error_log["error"])).argsort()[:n]
         folder_out = os.path.join(folder_validation_results, "best")
@@ -27,7 +33,7 @@ def select_n(best=True, n=20):
     if not os.path.exists(folder_out):
         os.mkdir(folder_out)
 
-    keys = ["filename", "user", "error"]
+    keys = ["filename", "user", "error"]  # error_relative_n1471
     df = pd.DataFrame({
         key: [error_log[key][idx] for idx in idx_selected] for key in keys
     })
@@ -40,13 +46,31 @@ def select_n(best=True, n=20):
         visualisation.save(os.path.join(folder_out, f"{filename}.png"))
 
 
-def print_total_error():
+def calculate_error():
     error = np.sum(error_log["error"])
     print(f"Total error: {error}")
+    relative_error = error / len(error_log["error"]) * 1471
+    print(f"Relative error: {relative_error}")
+    return error, relative_error
 
 
-# select_n(best=True, n=n)
-# select_n(best=False, n=n)
-print_total_error()
+def error_histogram():
+    print("Creating histogram")
+    import matplotlib.pyplot as plt
+    relative_error = np.multiply(error_log['error'], 1471)
+    n, bins, patches = plt.hist(relative_error, bins=30, density=True)
+    plt.title(f"Error distribution for {dataset_key} \n(n={len(error_log['error'])}, mu: {np.mean(relative_error):.2f}, std: {np.std(relative_error):.2f})")
+    plt.xlabel("Relative error (n=1471)")
+    plt.ylabel("Count")
+    path_out = os.path.join(path_results, "histogram.png")
+    plt.savefig(path_out)
+    plt.show()
+
+
+select_n(best=True, n=n)
+select_n(best=False, n=n)
+total_error, relative_error = calculate_error()
+error_histogram()
+
 
 error_log.close()
