@@ -144,6 +144,9 @@ class OpenEDSDataset(BaseDataset):
     def __len__(self):
         return self.N
 
+    def get_validation_indices(self):
+        return self.N_start
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.h5_in_file is not None:
             self.h5_in_file.close()
