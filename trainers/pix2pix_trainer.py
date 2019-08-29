@@ -47,8 +47,13 @@ class Pix2PixTrainer():
         self.optimizer_D.step()
         self.d_losses = d_losses
 
-    def get_latest_losses(self):
-        return {**self.g_losses, **self.d_losses}
+    def get_latest_losses(self, include_log_losses=False):
+        losses = {**self.g_losses, **self.d_losses}
+        if include_log_losses:
+            losses = {**losses, **self.pix2pix_model_on_one_gpu.get_loss_log()}
+            # reset the loss log
+            self.pix2pix_model_on_one_gpu.reset_loss_log()
+        return losses
 
     def get_latest_generated(self):
         return self.generated

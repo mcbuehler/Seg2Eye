@@ -69,7 +69,7 @@ try:
 
             # Visualizations
             if iter_counter.needs_printing():
-                losses = trainer.get_latest_losses()
+                losses = trainer.get_latest_losses(include_log_losses=True)
                 visualizer.print_current_errors(epoch, iter_counter.total_steps_so_far,
                                                 losses, iter_counter.time_per_iter)
                 visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
