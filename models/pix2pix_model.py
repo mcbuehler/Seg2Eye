@@ -26,6 +26,9 @@ class Pix2PixModel(torch.nn.Module):
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
 
+        if self.opt.spadeStyleGen:
+            self.downscale_z = nn.Linear(opt.z_dim, opt.w_dim)
+
         # set loss functions
         if opt.isTrain:
             self.criterionGAN = networks.GANLoss(
@@ -64,7 +67,7 @@ class Pix2PixModel(torch.nn.Module):
 
     def create_optimizers(self, opt):
         G_params = list(self.netG.parameters())
-        if opt.use_vae:
+        if opt.use_vae or opt.spadeStyleGen:
             G_params += list(self.netE.parameters())
         if opt.isTrain:
             D_params = list(self.netD.parameters())
@@ -84,7 +87,7 @@ class Pix2PixModel(torch.nn.Module):
     def save(self, epoch):
         util.save_network(self.netG, 'G', epoch, self.opt)
         util.save_network(self.netD, 'D', epoch, self.opt)
-        if self.opt.use_vae:
+        if self.opt.use_vae or self.opt.spadeStyleGen:
             util.save_network(self.netE, 'E', epoch, self.opt)
 
     ############################################################################
@@ -94,13 +97,13 @@ class Pix2PixModel(torch.nn.Module):
     def initialize_networks(self, opt):
         netG = networks.define_G(opt)
         netD = networks.define_D(opt) if opt.isTrain else None
-        netE = networks.define_E(opt) if opt.use_vae else None
+        netE = networks.define_E(opt) if opt.use_vae or opt.spadeStyleGen else None
 
         if not opt.isTrain or opt.continue_train:
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
-            if opt.use_vae:
+            if opt.use_vae or opt.spadeStyleGen:
                 netE = util.load_network(netE, 'E', opt.which_epoch, opt)
 
         return netG, netD, netE
@@ -200,15 +203,27 @@ class Pix2PixModel(torch.nn.Module):
         z = self.reparameterize(mu, logvar)
         return z, mu, logvar
 
+    def encode_w(self, real_image):
+        mu, _ = self.netE(real_image)
+        # netE outputs a mu of dim opt.z_dim
+        # netE ouputs mu and var, but we are currently only interested in mu (representing the style w)
+        # For readability.
+        # We go from opt.dim_z to opt.w_dim
+        w = self.downscale_z(mu)
+        return w
+
     def generate_fake(self, input_semantics, real_image, compute_kld_loss=False):
-        z = None
+        latent_style = None
         KLD_loss = None
+        # TODO: be careful not to overwrite values once we have a VAE for w as well
         if self.opt.use_vae:
-            z, mu, logvar = self.encode_z(real_image)
+            latent_style, mu, logvar = self.encode_z(real_image)
             if compute_kld_loss:
                 KLD_loss = self.KLDLoss(mu, logvar) * self.opt.lambda_kld
+        if self.opt.spadeStyleGen:
+            latent_style = self.encode_w(real_image)
 
-        fake_image = self.netG(input_semantics, z=z)
+        fake_image = self.netG(input_semantics, latent_style)
 
         assert (not compute_kld_loss) or self.opt.use_vae, \
             "You cannot compute KLD loss if opt.use_vae == False"
