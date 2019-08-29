@@ -28,6 +28,7 @@ class BaseOptions():
         parser.add_argument('--norm_D', type=str, default='spectralinstance', help='instance normalization or batch normalization')
         parser.add_argument('--norm_E', type=str, default='spectralinstance', help='instance normalization or batch normalization')
         parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
+        parser.add_argument('--spadeStyleGen', action='store_true', help='wheter to input style at every layer as well.')
 
         # input/output sizes
         parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
@@ -54,17 +55,17 @@ class BaseOptions():
         parser.add_argument('--cache_filelist_read', action='store_true', help='reads from the file list cache')
         parser.add_argument('--keep_original', action='store_true', help='reads from the file list cache')
 
-
         # for displays
         parser.add_argument('--display_winsize', type=int, default=400, help='display window size')
 
         # for generator
-        parser.add_argument('--netG', type=str, default='spade', help='selects model to use for netG (pix2pixhd | spade)')
+        parser.add_argument('--netG', type=str, default='spadestyle', help='selects model to use for netG (pix2pixhd | spade | spadestyle)')
         parser.add_argument('--ngf', type=int, default=64, help='# of gen filters in first conv layer')
         parser.add_argument('--init_type', type=str, default='xavier', help='network initialization [normal|xavier|kaiming|orthogonal]')
         parser.add_argument('--init_variance', type=float, default=0.02, help='variance of the initialization distribution')
         parser.add_argument('--z_dim', type=int, default=256,
                             help="dimension of the latent z vector")
+        parser.add_argument('--w_dim', type=int, default=8, help='Dimensionality of the latent style vector w')
 
         # for instance-wise features
         parser.add_argument('--no_instance', action='store_true', help='if specified, do *not* add instance map as input')
