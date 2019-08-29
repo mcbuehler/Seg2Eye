@@ -106,13 +106,14 @@ class OpenEDSDataset(BaseDataset):
         if self.dataset_key == "test" or self.dataset_key == "validation":
             # We take a random image from the user as input
             style_img_idx = np.random.choice(list(range(self.h5_in[user]["images_ss"].shape[0])))
-            target_image = self.h5_in[user]["images_ss"][style_img_idx]
-            filename = self.h5_in[user]["labels_gen_filenames"][idx_image].decode('utf-8')
+            style_image = self.h5_in[user]["images_ss"][style_img_idx]
+            key_labels = "labels_gen_filenames" if self.dataset_key == "test" else "images_ss_filenames"
+            filename = self.h5_in[user][key_labels][idx_image].decode('utf-8')
         else:
-            target_image = self.h5_in[user]["images_ss"][idx_image]
+            style_image = self.h5_in[user]["images_ss"][idx_image]
             filename = self.h5_in[user]["images_ss_filenames"][idx_image].decode('utf-8')
         transform_image = get_transform(self.opt, params)
-        target_image_tensor = transform_image(target_image)
+        style_image = transform_image(style_image)
 
         if torch.max(mask_tensor) > 3:
             print(user, idx_image, filename)
@@ -127,8 +128,8 @@ class OpenEDSDataset(BaseDataset):
                       'instance': 0,
                       'filename': filename,
                       'user': user,
-                      'image': target_image_tensor,
-                      'image_original': torch.from_numpy(target_image)
+                      'image': style_image,
+                      'image_original': torch.from_numpy(style_image)
                       }
 
         # if self.keep_original:
