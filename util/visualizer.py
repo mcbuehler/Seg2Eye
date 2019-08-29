@@ -178,7 +178,7 @@ def visualize_sidebyside(data, visualizer, epoch, total_steps_so_far, limit=-1, 
     visuals_val = list()
     for i in range(len(data[key_fake])):
         # Content val is between 0 and 3 -- do normalize
-        content_val = data[key_content][i].detach().cpu()
+        content_val = data[key_content][i].detach().cpu().float()
         content_val = (content_val / torch.max(content_val)).squeeze()
         fake_val = data[key_fake][i].detach().cpu().squeeze()
         target_val = data[key_target][i].detach().cpu().squeeze()

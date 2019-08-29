@@ -14,6 +14,10 @@ def get_validation_data(dataloader, pix2pix_model, limit=4):
     validation_indices = dataloader.dataset.get_validation_indices()[:limit]
     for i_val in validation_indices:
         data_val = dataloader.dataset[i_val]
+
+        for key in ["label", "image"]:
+            # As we access the dataset directly, the images need an additional dimension (batch size)
+            data_val[key] = data_val[key].unsqueeze(0)
         # 1st component: generated image
         result["fake"].append(pix2pix_model.forward(data_val, mode="inference").cpu())
         # 2nd component: input segmentation mask
