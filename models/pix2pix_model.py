@@ -5,6 +5,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import traceback
 
 import torch
+from torch import nn
 import models.networks as networks
 import util.util as util
 
@@ -29,7 +30,8 @@ class Pix2PixModel(torch.nn.Module):
         if opt.isTrain:
             self.criterionGAN = networks.GANLoss(
                 opt.gan_mode, tensor=self.FloatTensor, opt=self.opt)
-            self.criterionFeat = torch.nn.L1Loss()
+            self.criterionFeat = nn.L1Loss()
+            self.criterionL2 = nn.MSELoss()
             if not opt.no_vgg_loss:
                 self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
             if opt.use_vae:
@@ -155,6 +157,8 @@ class Pix2PixModel(torch.nn.Module):
 
         G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                             for_discriminator=False)
+
+        G_losses['L2'] = self.criterionL2(fake_image, real_image) * self.opt.lambda_l2
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
