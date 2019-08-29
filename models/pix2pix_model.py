@@ -2,8 +2,6 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
-import traceback
-
 import torch
 from torch import nn
 import models.networks as networks
@@ -39,6 +37,13 @@ class Pix2PixModel(torch.nn.Module):
                 self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
             if opt.use_vae:
                 self.KLDLoss = networks.KLDLoss()
+            self.reset_loss_log()
+
+    def get_loss_log(self):
+        return {key: torch.mean(torch.stack(self.loss_log[key])) for key in self.loss_log}
+
+    def reset_loss_log(self):
+        self.loss_log = {"L2_raw": list(), "KLD_raw": list()}
 
     # Entry point for all calls involving forward pass
     # of deep networks. We used this approach since DataParallel module
@@ -161,7 +166,11 @@ class Pix2PixModel(torch.nn.Module):
         G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                             for_discriminator=False)
 
-        G_losses['L2'] = self.criterionL2(fake_image, real_image) * self.opt.lambda_l2
+        l2_loss = self.criterionL2(fake_image, real_image)
+        G_losses['L2_weighted'] = l2_loss * self.opt.lambda_l2
+
+        # Only for logging
+        self.loss_log['L2_raw'].append(l2_loss)
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
@@ -219,7 +228,10 @@ class Pix2PixModel(torch.nn.Module):
         if self.opt.use_vae:
             latent_style, mu, logvar = self.encode_z(real_image)
             if compute_kld_loss:
-                KLD_loss = self.KLDLoss(mu, logvar) * self.opt.lambda_kld
+                kld_loss_raw = self.KLDLoss(mu, logvar)
+                KLD_loss = kld_loss_raw * self.opt.lambda_kld
+                self.loss_log['KLD_raw'].append(kld_loss_raw)
+
         if self.opt.spadeStyleGen:
             latent_style = self.encode_w(real_image)
 
