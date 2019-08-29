@@ -113,7 +113,7 @@ class OpenEDSDataset(BaseDataset):
             style_image = self.h5_in[user]["images_ss"][idx_image]
             filename = self.h5_in[user]["images_ss_filenames"][idx_image].decode('utf-8')
         transform_image = get_transform(self.opt, params)
-        style_image = transform_image(style_image)
+        style_image_tensor = transform_image(style_image)
 
         if torch.max(mask_tensor) > 3:
             print(user, idx_image, filename)
@@ -128,7 +128,7 @@ class OpenEDSDataset(BaseDataset):
                       'instance': 0,
                       'filename': filename,
                       'user': user,
-                      'image': style_image,
+                      'image': style_image_tensor,
                       'image_original': torch.from_numpy(style_image)
                       }
 
