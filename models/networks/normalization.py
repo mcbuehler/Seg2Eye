@@ -108,3 +108,82 @@ class SPADE(nn.Module):
         out = normalized * (1 + gamma) + beta
 
         return out
+
+
+class FC(nn.Module):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 gain=2**(0.5),
+                 use_wscale=False,
+                 lrmul=1.0,
+                 bias=True):
+        """
+            The complete conversion of Dense/FC/Linear Layer of original Tensorflow version.
+        """
+        super(FC, self).__init__()
+        he_std = gain * in_channels ** (-0.5)  # He init
+        if use_wscale:
+            init_std = 1.0 / lrmul
+            self.w_lrmul = he_std * lrmul
+        else:
+            init_std = he_std / lrmul
+            self.w_lrmul = lrmul
+
+        self.weight = torch.nn.Parameter(torch.randn(out_channels, in_channels) * init_std)
+        if bias:
+            self.bias = torch.nn.Parameter(torch.zeros(out_channels))
+            self.b_lrmul = lrmul
+        else:
+            self.bias = None
+
+    def forward(self, x):
+        if self.bias is not None:
+            out = F.linear(x, self.weight * self.w_lrmul, self.bias * self.b_lrmul)
+        else:
+            out = F.linear(x, self.weight * self.w_lrmul)
+        out = F.leaky_relu(out, 0.2, inplace=True)
+        return out
+
+
+class ApplyStyle(nn.Module):
+    """
+        AdaIN
+        @ref: https://github.com/lernapparat/lernapparat/blob/master/style_gan/pytorch_style_gan.ipynb
+        @ref https://github.com/tomguluson92/StyleGAN_PyTorch/blob/master/networks_stylegan.py
+    """
+    def __init__(self, latent_size, channels, use_wscale):
+        """
+
+        :param latent_size: dimension of w
+        :param channels: number of channels where we feed the style vector
+        :param use_wscale:
+        """
+        super(ApplyStyle, self).__init__()
+        self.linear = FC(latent_size,
+                      channels * 2,
+                      gain=1.0,
+                      use_wscale=use_wscale)
+
+    def forward(self, x, latent_style):
+        style = self.linear(latent_style)  # style => [batch_size, n_channels*2]
+        shape = [-1, 2, x.size(1), 1, 1]
+        style = style.view(shape)    # [batch_size, 2, n_channels, ...]
+        # The first half of style is scale, the second half is offset
+        x = x * (style[:, 0] + 1.) + style[:, 1]
+        return x
+
+
+class SPADE_STYLE_Block(nn.Module):
+    def __init__(self, fin, opt):
+        super().__init__()
+
+        spade_config_str = opt.norm_G.replace('spectral', '')
+        self.spade = SPADE(spade_config_str, fin, opt.semantic_nc)
+        self.adain = ApplyStyle(opt.w_dim, channels=fin, use_wscale=False)
+
+    def forward(self, x, segmap, latent_style):
+        output_spade = self.spade(x, segmap)
+        output_adain = self.adain(x, latent_style)
+        out = (output_spade + output_adain) / 2
+        return out
