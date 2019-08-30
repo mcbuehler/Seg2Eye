@@ -5,73 +5,60 @@ import numpy as np
 
 from data.base_dataset import __resize
 from data.preprocessor import ImagePreprocessor
+from models.networks import openEDSaccuracy
+from data.postprocessor import ImagePostprocessor
 from util.image_annotate import get_text_image
+# from util.util import reformat_data_from_loader
 from util.visualizer import visualize_sidebyside
 
 
-def get_validation_data(dataloader, pix2pix_model, limit=4):
-    result = {"fake": list(), "content": list(), "target": list(), "target_original": list()}
-    validation_indices = dataloader.dataset.get_validation_indices()[:limit]
-    for i_val in validation_indices:
-        data_val = dataloader.dataset[i_val]
+def calculate_mse_for_images(produced, target):
+    assert produced.shape == target.shape
+    assert torch.min(produced) >= 0 and torch.max(produced) <= 255
+    assert torch.min(target) >= 0 and torch.max(target) <= 255
+    assert produced.shape[-2:] == (640, 400), f"Invalid shape: {produced.shape}"
+    assert len(produced.shape) == 4, "Please feed 4D tensors"
 
-        for key in ["label", "image"]:
-            # As we access the dataset directly, the images need an additional dimension (batch size)
-            data_val[key] = data_val[key].unsqueeze(0)
-        # 1st component: generated image
-        result["fake"].append(pix2pix_model.forward(data_val, mode="inference").cpu())
-        # 2nd component: input segmentation mask
-        result["content"].append(torch.div(data_val['label'].float(), 3))
-        # 3rd component: ground truth image
-        result["target"].append(data_val['image'])
-        result["target_original"].append(data_val['image_original'])
-    return result
-
-
-def calculate_mse_for_images(produced, target, simulate_n=-1):
-    assert produced.shape[-2:] == (640, 400)
-    assert target.shape[-2:] == (640, 400)
-    mse_error = 0
-    if len(produced.shape) == 2:
-        # We want it to have three dimensions
-        produced = np.array([produced])
-        target = np.array([target])
-
+    mse_error = list()
     # We compute the norm for each image and then normalise it
     batch_size = produced.shape[0]
     for i in range(batch_size):
-        fake_vector = produced[i].reshape(-1).astype(np.int16)
-        real_vector = target[i].reshape(-1).astype(np.int16)
-        mse_error += np.linalg.norm(fake_vector - real_vector)
-    mse_error = mse_error / (640 * 400)
-    # We always want to work with 1471 samples to have comparable errors
-
-    if simulate_n > 0:
-        mse_error = mse_error * simulate_n / batch_size
+        produced_i = produced[i]
+        target_i = target[i]
+        # diff_i = torch.add(produced_i, torch.mul(target_i, -1)).float()
+        norm_i = openEDSaccuracy(produced_i, target_i)
+        mse_error.append(norm_i)
+    mse_error = torch.stack(mse_error)
     return mse_error
 
 
-def plot_mse(data, visualizer, epoch, total_steps_so_far, limit=-1):
-    n = len(data["fake"])
-    if limit > 0:
-        n = min(n, limit)
+def calculate_relative_sum_mse(data):
+    fake = ImagePostprocessor.to_255resized_imagebatch(data['fake'], as_tensor=True)
+    real = ImagePostprocessor.as_batch(data["target_original"], as_tensor=True)
 
-    result = [(ImagePreprocessor.unnormalize(np.copy(data["fake"][i].detach().cpu())),
-        np.copy(data["target_original"][i])) for i in range(n)]
-    fake = np.array([r[0] for r in result]).squeeze()
-    real = np.array([r[1] for r in result]).squeeze()
-    # fake_vector = fake_vector[:2]
-    # real_vector = real_vector[:2]
-    fake_resized = np.array([__resize(img, 400, 640) for img in fake])
-    mse_error = calculate_mse_for_images(fake_resized, real, simulate_n=1471)
-    mse_error = torch.Tensor([mse_error])
-    errors = {'val/mse': mse_error}
-    visualizer.print_current_errors(epoch, total_steps_so_far, errors, t=0)
-    visualizer.plot_current_errors(errors, total_steps_so_far)
+    mse_error = calculate_mse_for_images(fake, real)
+    mse_error = torch.mean(mse_error) * 1471
+    return mse_error
 
 
-def run_validation(dataloader, pix2pix_model, visualizer, epoch, iter_counter, limit=500, visualisation_limit=4):
-    print(f"Running validation on {limit} images")
-    data = get_validation_data(dataloader, pix2pix_model, limit=limit)
-    visualize_sidebyside(data, visualizer, epoch, iter_counter.total_steps_so_far, limit=visualisation_limit, log_key='val')
-    plot_mse(data, visualizer, epoch, iter_counter.total_steps_so_far, limit=limit)
+def run_validation(dataloader, pix2pix_model, visualizer, epoch, iter_counter, limit=500, visualisation_limit=4, log_key='val'):
+    validation_indices = dataloader.dataset.get_validation_indices()[:limit]
+    result_list = list()
+    for i_val in validation_indices:
+        data_i = dataloader.dataset.get_particular(i_val)
+        data_i['fake'] = pix2pix_model.forward(data_i, mode="inference").cpu()
+        result_list.append(data_i)
+    result = {k: [rl[k] for rl in result_list] for k in result_list[0].keys()}
+    for key in ["style_image", "target", "target_original", "fake", "label"]:
+        result[key] = torch.cat(result[key], dim=0)
+
+    print(f"Running logging for dataset '{log_key}' on {limit} images")
+    # data = get_validation_data(dataloader, pix2pix_model, limit=limit)
+    mse_errors = calculate_relative_sum_mse(result)
+
+    errors_dict = {f'mse/{log_key}': mse_errors}
+    visualizer.print_current_errors(epoch, iter_counter.total_steps_so_far, errors_dict, t=0)
+    visualizer.plot_current_errors(errors_dict, iter_counter.total_steps_so_far)
+
+    visualize_sidebyside(result, visualizer, epoch, iter_counter.total_steps_so_far, limit=visualisation_limit, log_key=log_key)
+    # calculate_mse(result, visualizer, epoch, iter_counter.total_steps_so_far, limit=limit, log_key=log_key)
