@@ -5,24 +5,17 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 
 import sys
 import traceback
-from collections import OrderedDict
 
 import torch
 
-from data.openeds_dataset import OpenEDSDataset
 from options.train_options import TrainOptions
 import util.validation as validation
 import data
-from util.image_annotate import get_text_image
 from util.iter_counter import IterationCounter
 from util.visualizer import Visualizer, visualize_sidebyside
 from trainers.pix2pix_trainer import Pix2PixTrainer
-from tensorboardX.writer import SummaryWriter
-import os
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-
-
+# os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # parse options
 opt = TrainOptions().parse()
 
@@ -43,12 +36,10 @@ iter_counter = IterationCounter(opt, len(dataloader))
 
 # create tool for visualization
 visualizer = Visualizer(opt)
-summary_directory = os.path.join(opt.checkpoints_dir, opt.name, "tensorboard")
-writer = SummaryWriter(summary_directory)
 
-opt.display_freq = 1
-opt.print_freq = 1
-opt.validation_limit = 5
+# opt.display_freq = 5
+# opt.print_freq = 5
+# opt.validation_limit = 5
 
 try:
     for epoch in iter_counter.training_epochs():
@@ -75,13 +66,19 @@ try:
                 visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
 
             if iter_counter.needs_displaying():
-                data_visuals = {'content': data_i['label'],
-                                       'fake': trainer.get_latest_generated(),
-                                       'target': data_i['image']}
+                data_visuals = {**data_i, 'fake': trainer.get_latest_generated()}
+                # data_visuals = {'content': data_i['label'],
+                #                 'style': data_i['style_image'],
+                #
+                #                        'target': data_i['target'], 'user': data_i['user'], 'filename': data_i['filename']}
                 visualize_sidebyside(data_visuals, visualizer, epoch, iter_counter.total_steps_so_far, limit=8, log_key='train')
 
-                # Output VALIDATION images
-                validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit)
+                with torch.no_grad():
+                    # Log some stuff for training
+                    validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
+                                              limit=opt.validation_limit, log_key='train')
+                    # Output VALIDATION images
+                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val')
 
             if iter_counter.needs_saving():
                 print('saving the latest model (epoch %d, total_steps %d)' %
