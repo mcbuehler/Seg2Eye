@@ -276,3 +276,10 @@ class Colorize(object):
             color_image[2][mask] = self.cmap[label][2]
 
         return color_image
+
+
+def print_tensor_stats(tensor):
+    print(f"dim: {tensor.shape}")
+    print(f"min / max: {torch.min(tensor)} / {torch.max(tensor)}")
+    print(f"mean: {torch.mean(tensor.float())}")
+
