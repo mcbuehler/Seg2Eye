@@ -5,16 +5,20 @@ import os
 import pandas as pd
 
 # Number of samples to consider
-n = 100
+from options.test_options import TestOptions
+
+n = 5
+# n = 100
+opt = TestOptions().parse()
 
 # path_results = "/home/marcel/projects/SPADE_custom/checkpoints/190823_spade__use_vae/results/"
 
-dataset_key = "train"
+# dataset_key = "train"
 # dataset_key = "validation"
-name = "190823_spade"
-checkpoints_dir = "/home/marcel/projects/SPADE_custom/checkpoints/"
-path_results = os.path.join(checkpoints_dir, name, "results", dataset_key)
-path_error_log = os.path.join(path_results, f"error_log_{dataset_key}.h5")
+# name = "190823_spade"
+# checkpoints_dir = "/home/marcel/projects/SPADE_custom/checkpoints/"
+path_results = os.path.join(opt.checkpoints_dir, opt.name, "results", opt.dataset_key)
+path_error_log = os.path.join(path_results, f"error_log_{opt.dataset_key}.h5")
 folder_validation_results = os.path.join(path_results, "visualisations")
 if not os.path.exists(folder_validation_results):
     os.makedirs(folder_validation_results)
@@ -59,9 +63,9 @@ def error_histogram():
     import matplotlib.pyplot as plt
     relative_error = np.multiply(error_log['error'], 1471)
     n, bins, patches = plt.hist(relative_error, bins=30, density=True)
-    plt.title(f"Error distribution for {dataset_key} \n(n={len(error_log['error'])}, mu: {np.mean(relative_error):.2f}, std: {np.std(relative_error):.2f})")
+    plt.title(f"Error distribution for {opt.dataset_key} \n(n={len(error_log['error'])}, mu: {np.mean(relative_error):.2f}, std: {np.std(relative_error):.2f})")
     plt.xlabel("Relative error (n=1471)")
-    plt.ylabel("Count")
+    plt.ylabel("Ratio")
     path_out = os.path.join(path_results, "histogram.png")
     plt.savefig(path_out)
     plt.show()
