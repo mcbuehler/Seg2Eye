@@ -11,8 +11,9 @@ from collections import OrderedDict
 import torch
 from PIL import Image
 
+from data.postprocessor import ImagePostprocessor
+from data.preprocessor import ImagePreprocessor
 from . import util
-from . import html
 import scipy.misc
 import numpy as np
 
@@ -26,8 +27,6 @@ class Visualizer():
     def __init__(self, opt):
         self.opt = opt
         self.tf_log = opt.isTrain and opt.tf_log
-        self.use_html = opt.isTrain and not opt.no_html
-        self.win_size = opt.display_winsize
         self.name = opt.name
         if self.tf_log:
             import tensorflow as tf
@@ -35,11 +34,6 @@ class Visualizer():
             self.log_dir = os.path.join(opt.checkpoints_dir, opt.name, 'logs')
             self.writer = tf.summary.FileWriter(self.log_dir)
 
-        if self.use_html:
-            self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
-            self.img_dir = os.path.join(self.web_dir, 'images')
-            print('create web directory %s...' % self.web_dir)
-            util.mkdirs([self.web_dir, self.img_dir])
         if opt.isTrain:
             self.log_name = os.path.join(opt.checkpoints_dir, opt.name, 'loss_log.txt')
             with open(self.log_name, "a") as log_file:
@@ -77,46 +71,6 @@ class Visualizer():
             # Create and write Summary
             summary = self.tf.Summary(value=img_summaries)
             self.writer.add_summary(summary, step)
-
-        if self.use_html: # save images to a html file
-            for label, image_numpy in visuals.items():
-                if isinstance(image_numpy, list):
-                    for i in range(len(image_numpy)):
-                        img_path = os.path.join(self.img_dir, 'epoch%.3d_iter%.3d_%s_%d.png' % (epoch, step, label, i))
-                        util.save_image(image_numpy[i], img_path)
-                else:
-                    img_path = os.path.join(self.img_dir, 'epoch%.3d_iter%.3d_%s.png' % (epoch, step, label))
-                    if len(image_numpy.shape) >= 4:
-                        image_numpy = image_numpy[0]                    
-                    util.save_image(image_numpy, img_path)
-
-            # update website
-            webpage = html.HTML(self.web_dir, 'Experiment name = %s' % self.name, refresh=5)
-            for n in range(epoch, 0, -1):
-                webpage.add_header('epoch [%d]' % n)
-                ims = []
-                txts = []
-                links = []
-
-                for label, image_numpy in visuals.items():
-                    if isinstance(image_numpy, list):
-                        for i in range(len(image_numpy)):
-                            img_path = 'epoch%.3d_iter%.3d_%s_%d.png' % (n, step, label, i)
-                            ims.append(img_path)
-                            txts.append(label+str(i))
-                            links.append(img_path)
-                    else:
-                        img_path = 'epoch%.3d_iter%.3d_%s.png' % (n, step, label)
-                        ims.append(img_path)
-                        txts.append(label)
-                        links.append(img_path)
-                if len(ims) < 10:
-                    webpage.add_images(ims, txts, links, width=self.win_size)
-                else:
-                    num = int(round(len(ims)/2.0))
-                    webpage.add_images(ims[:num], txts[:num], links[:num], width=self.win_size)
-                    webpage.add_images(ims[num:], txts[num:], links[num:], width=self.win_size)
-            webpage.save()
 
     # errors: dictionary of error labels and values
     def plot_current_errors(self, errors, step):
@@ -173,18 +127,24 @@ class Visualizer():
         webpage.add_images(ims, txts, links, width=self.win_size)
 
 
-def visualize_sidebyside(data, visualizer, epoch, total_steps_so_far, limit=-1, key_fake='fake', key_content='content', key_target='target', log_key=''):
+def visualize_sidebyside(data, visualizer, epoch=-1, total_steps_so_far=-1, limit=-1, key_fake='fake', key_content='label', key_target='target_original', key_style='style_image', log_key='', log=True, w=200, h=320):
     # Validation results
     visuals_val = list()
+    # Content val is between 0 and 3 -- do normalize
+    # content = ImagePostprocessor.to_255resized_imagebatch(data[key_content], w, h, as_tensor=True)
+    # fake = ImagePostprocessor.to_255resized_imagebatch(data[key_fake], w, h, as_tensor=True)
+    # target = ImagePostprocessor.resize(data[key_target], w, h, as_tensor=True).int()
+    # style = ImagePostprocessor.to_255resized_imagebatch(data[key_style], w, h, as_tensor=True)
+
+    content = ImagePostprocessor.to_1resized_imagebatch(data[key_content], w, h, as_tensor=True)
+    fake = ImagePostprocessor.to_1resized_imagebatch(data[key_fake], w, h, as_tensor=True)
+    target = ImagePostprocessor.to_1resized_imagebatch(data[key_target], w, h, as_tensor=True)
+    style = ImagePostprocessor.to_1resized_imagebatch(data[key_style], w, h, as_tensor=True)
     for i in range(len(data[key_fake])):
-        # Content val is between 0 and 3 -- do normalize
-        content_val = data[key_content][i].detach().cpu().float()
-        content_val = (content_val / torch.max(content_val)).squeeze()
-        fake_val = data[key_fake][i].detach().cpu().squeeze()
-        target_val = data[key_target][i].detach().cpu().squeeze()
         # Create image
-        dim = len(content_val.shape) - 1
-        cat_val = torch.cat((content_val, target_val, fake_val), dim=dim)
+        # for e in [style[i], content[i], target[i], fake[i]]:
+        #     print(e.shape, e.dtype)
+        cat_val = torch.cat((style[i], content[i], target[i], fake[i]), dim=-1)
         # TODO: solve issue with getting font
         # # 4th component: text annotation with metadata
         # text_val = get_text_image(f'{data_val["user"][0]}/{data_val["filename"][0]}', dim=(cat_val.shape[3], 50))
@@ -196,4 +156,6 @@ def visualize_sidebyside(data, visualizer, epoch, total_steps_so_far, limit=-1, 
             break
 
     visuals_val = OrderedDict(visuals_val)
-    visualizer.display_current_results(visuals_val, epoch, total_steps_so_far)
+    if log:
+        visualizer.display_current_results(visuals_val, epoch, total_steps_so_far)
+    return visuals_val
