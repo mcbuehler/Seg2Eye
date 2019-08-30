@@ -46,7 +46,7 @@ class Pix2PixModel(torch.nn.Module):
         return loss_log
 
     def reset_loss_log(self):
-        self.loss_log = {"L2/raw": list(), "KLD/raw": list(), "train/mse": list()}
+        self.loss_log = {"L1/raw": list(), "L2/raw": list(), "KLD/raw": list(), "train/mse": list()}
 
     # Entry point for all calls involving forward pass
     # of deep networks. We used this approach since DataParallel module
