@@ -4,3 +4,6 @@ dominate>=2.3.1
 dill
 scikit-image
 opencv-python
+h5py
+tensorboardX
+tensorflow
