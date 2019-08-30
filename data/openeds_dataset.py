@@ -44,7 +44,8 @@ class OpenEDSDataset(BaseDataset):
         self.N_start = list()
         for user in self.user_ids:
             self.N_start.append(self.N)
-            keys = ['labels_gen_filenames'] if self.dataset_key == "test" else ['images_ss_filenames']  # TODO: leverage 'images_gen_filenames'
+            keys = ['labels_gen_filenames'] if self.dataset_key == "test" else [
+                'images_ss_filenames']  # TODO: leverage 'images_gen_filenames'
             # for k in self.h5_in[user].keys():
             #     print(k, self.h5_in[user][k].shape)
             for key in keys:
@@ -90,11 +91,11 @@ class OpenEDSDataset(BaseDataset):
         self._setup_data_file()
 
         # Input to Generator: 1+ style and 1 content image (segmentation mask)
-        user, idx_image = self._get_tuple_identifier_from_index(index)
+        user, idx_target_image = self._get_tuple_identifier_from_index(index)
         # style_image = np.random.choice(self.h5_in[user]["images_gen"])
 
         label_key = "labels_ss" if self.dataset_key != "test" else "labels_gen"
-        mask = self.h5_in[user][label_key][idx_image]
+        mask = self.h5_in[user][label_key][idx_target_image]
 
         params = get_params(self.opt, mask.shape)
         # It is important to use nearest neighbour interpolation for resizing the mask. Otherwise we might get
@@ -102,21 +103,20 @@ class OpenEDSDataset(BaseDataset):
         transform_mask = get_transform(self.opt, params, method=cv2.INTER_NEAREST, normalize=False)
         # the toTensor method in transform will convert uint8 [0, 255] to foat [-1, 1], so we need to revert this.
         mask_tensor = transform_mask(mask) * 255.0
-        # This is the image that we should be producing. We feed it to D.
-        if self.dataset_key == "test" or self.dataset_key == "validation":
-            # We take a random image from the user as input
-            style_img_idx = np.random.choice(list(range(self.h5_in[user]["images_ss"].shape[0])))
-            style_image = self.h5_in[user]["images_ss"][style_img_idx]
-            key_labels = "labels_gen_filenames" if self.dataset_key == "test" else "images_ss_filenames"
-            filename = self.h5_in[user][key_labels][idx_image].decode('utf-8')
-        else:
-            style_image = self.h5_in[user]["images_ss"][idx_image]
-            filename = self.h5_in[user]["images_ss_filenames"][idx_image].decode('utf-8')
+
+        # For test images we do not have generative images.
+        key_style_images = "images_ss" if self.dataset_key == "test" else "images_gen"
+        style_img_idx = np.random.choice(list(range(self.h5_in[user][key_style_images].shape[0])))
+        style_image = self.h5_in[user][key_style_images][style_img_idx]
+
+        key_filenames = "labels_gen_filenames" if self.dataset_key == "test" else "images_ss_filenames"
+        filename = self.h5_in[user][key_filenames][idx_target_image].decode('utf-8')
+
         transform_image = get_transform(self.opt, params)
         style_image_tensor = transform_image(style_image)
 
         if torch.max(mask_tensor) > 3:
-            print(user, idx_image, filename)
+            print(user, idx_target_image, filename)
             print(np.max(mask))
             print(torch.max(mask_tensor))
 
@@ -124,20 +124,33 @@ class OpenEDSDataset(BaseDataset):
         # random_user = np.random.choice(self.user_ids)
         # real = np.random.choice(self.h5_in[random_user]["images_gen"])
 
+        # input_dict = {'label': mask_tensor,
+        #               'instance': 0,
+        #               'filename': filename,
+        #               'user': user,
+        #               'image': style_image_tensor,
+        #               'image_original': torch.from_numpy(style_image)
+        #               }
+
         input_dict = {'label': mask_tensor,
                       'instance': 0,
                       'filename': filename,
                       'user': user,
-                      'image': style_image_tensor,
-                      'image_original': torch.from_numpy(style_image)
+                      'style_image': style_image_tensor
                       }
+        if self.dataset_key != "test":
+            target_image = np.array(self.h5_in[user]["images_ss"][idx_target_image])
+            target_image_tensor = transform_image(target_image)
+            input_dict = {**input_dict,
+                          'target': target_image_tensor,
+                          'target_original': torch.from_numpy(np.expand_dims(target_image, axis=0)).int()
+                          }
 
-        # if self.keep_original:
-        #     input_dict['original'] = target_image
-        # print(input_dict)
         return input_dict
 
-    # def get_particular(self, user_id_content, image_idx_content, image_idx_style):
+    def get_particular(self, idx):
+        batch = self[idx]
+        return self.unsqueeze_batch(batch)
 
     def postprocess(self, input_dict):
         return input_dict
@@ -148,13 +161,19 @@ class OpenEDSDataset(BaseDataset):
     def get_validation_indices(self):
         return self.N_start
 
+    @classmethod
+    def unsqueeze_batch(cls, batch):
+        # Create a first batch size dimension
+        for key in ["style_image", "target", "target_original", "label"]:
+        # for key in ["target_original"]:
+            batch[key] = batch[key].unsqueeze(0)
+        return batch
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.h5_in_file is not None:
             self.h5_in_file.close()
             self.h5_in_file = None
             self.h5_in = None
-
-
 
 # for dataset_key in f:
 #     data = f[dataset_key]

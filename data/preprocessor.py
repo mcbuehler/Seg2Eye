@@ -1,7 +1,9 @@
+import cv2
 import numpy as np
 
 import cv2 as cv
 import torch
+from PIL import Image
 from torchvision import transforms
 
 # from src.util import gaze as gaze_func
@@ -46,7 +48,6 @@ class ImagePreprocessor(object):
         image = image * 255 / 2
         if isinstance(image, torch.Tensor):
             return image
-
         else:
             return image.astype(np.uint16)
 
@@ -81,11 +82,30 @@ class ImagePreprocessor(object):
             return image.transpose((2, 0, 1))
         return np.stack([cls.hwc2chw(img) for img in image])
 
+
+    @classmethod
+    def chw2hwc_tensor(cls, image):
+        if len(image.shape) == 4:
+            return image.permute(0, 2, 3, 1)
+        else:
+            return image.permute(1, 2, 0)
+
     @classmethod
     def chw2hwc(cls, image):
+        if isinstance(image, torch.Tensor):
+            return cls.chw2hwc_tensor(image)
         if len(image.shape) == 3:
-            return image.transpose((1, 2, 0))
+                return image.transpose((1, 2, 0))
         return np.stack([cls.chw2hwc(img) for img in image])
+
+    @classmethod
+    def resize(cls, img, w, h, method=Image.BICUBIC):
+        if isinstance(img, torch.Tensor):
+            img_np = np.copy(img.cpu().detach())
+            return cls.resize(img_np, w, h, method)
+        if isinstance(img, np.ndarray):
+            return cv2.resize(img, (w, h), interpolation=method)
+        return img.resize((w, h), method)
 
     @staticmethod
     def rescale(image, w, h):
