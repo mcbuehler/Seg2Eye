@@ -99,8 +99,8 @@ for i, data_i in enumerate(dataloader):
     # We are testing
         for b in range(len(img_filename)):
             result_path = os.path.join(results_dir, img_filename[b] + ".npy")
-            assert np.min(fake_resized[b]) >= 0 and np.max(fake_resized[b]) <= 255
-            np.save(result_path, fake_resized[b].astype(np.uint8))
+            assert torch.min(fake_resized[b]) >= 0 and torch.max(fake_resized[b]) <= 255
+            np.save(result_path, np.copy(fake_resized[b]).astype(np.uint8))
             filepaths.append(result_path)
 
     if is_validation:
@@ -126,7 +126,8 @@ if is_validation:
     print(f"Error calculated on {N_actual} / {dataloader.dataset.N} samples{os.linesep}"
           f"  sum: {np.sum(all_errors):.2f}  {os.linesep}"
           f"  sum relative to n=1471: {np.sum(all_errors)/len(all_errors)*1471:.2f} {os.linesep}"
-          f"  mean: {np.mean(all_errors):.6f} (std: {np.std(all_errors):.4f})")
+          f"  mean: {np.mean(all_errors):.6f} (std: {np.std(all_errors):.4f})"
+          f"  dataset_key: {opt.dataset_key}, model: {opt.name}")
     if opt.write_error_log:
         error_log.create_dataset("error_relative_n1471", data=np.multiply(error_log["error"], 1471), dtype=np.float)
         error_log.close()
