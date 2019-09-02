@@ -16,6 +16,7 @@ W_DIM=8
 NORM_G='spectralspadeinstance3x3'
 
 # training-related
+BATCH_SIZE=1
 USE_APEX=1
 
 # loss-related
@@ -32,6 +33,7 @@ if [[ $NORM_G == *"sync"* && "$USE_APEX" == "1" ]]; then echo 'SyncronizedBatchN
 EXPERIMENT="Seg2Eye${IMG_SIZE}"
 EXPERIMENT+="_z${Z_DIM}"
 EXPERIMENT+="_w${W_DIM}"
+EXPERIMENT+="_bs${BATCH_SIZE}"
 EXPERIMENT+="_l2${LAMBDA_L2}"
 if [ "$USE_VAE" = "1" ]; then EXPERIMENT+="_vae"; fi
 if [ "$USE_APEX" = "1" ]; then EXPERIMENT+="_apex"; fi
@@ -65,6 +67,7 @@ CMD+="rsync -a --include '*/' --include '*.py' --exclude '*' ./ ${OUTPUT_DIR}/sr
 # Construct train script call
 CMD+="python3 train.py \
 	--name ${EXPERIMENT} \
+	--tf_log \
 	\
 	--dataroot ${DATA_ROOT} \
 	--dataset_mode openeds \
@@ -76,7 +79,9 @@ CMD+="python3 train.py \
 	\
 	--z_dim ${Z_DIM} \
 	--w_dim ${W_DIM} \
+	--norm_G ${NORM_G} \
 	\
+	--batchSize ${BATCH_SIZE} \
 	--lambda_l2 ${LAMBDA_L2} \
 "
 if [ "$USE_VAE" == "1" ]; then CMD+=" --spadeStyleGen"; fi
