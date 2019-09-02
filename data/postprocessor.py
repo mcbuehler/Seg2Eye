@@ -4,6 +4,7 @@ import cv2
 
 
 class ImagePostprocessor:
+    eps = 1e-6
 
     @classmethod
     def as_batch(cls, image, as_tensor=True):
@@ -105,4 +106,20 @@ class ImagePostprocessor:
         image = image.transpose(0, 2, 3, 1).astype(np.float)
         image = np.array([[cv2.resize(img, (w, h), interpolation=cv2.INTER_LINEAR)] for img in image])
         return cls.return_as(image, as_tensor)
+
+    @classmethod
+    def assert_range1(cls, img):
+        min_val = torch.min(img)
+        max_val = torch.max(img)
+        assert min_val >= -1 - cls.eps, f"Invalid ranges for image. Min: {min_val}, max: {max_val}"
+        assert max_val <= 1 + cls.eps, f"Invalid ranges for image. Min: {min_val}, max: {max_val}"
+
+    @classmethod
+    def get_error_map(cls, fake, target):
+        assert fake.shape == target.shape
+        cls.assert_range1(fake)
+        cls.assert_range1(target)
+        error_heatmap = torch.abs(fake - target)
+        error_heatmap = (error_heatmap / torch.max(error_heatmap) * 2) - 1
+        return error_heatmap
 
