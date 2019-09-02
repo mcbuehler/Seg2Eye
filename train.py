@@ -66,19 +66,16 @@ try:
                 visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
 
             if iter_counter.needs_displaying():
-                data_visuals = {**data_i, 'fake': trainer.get_latest_generated()}
-                # data_visuals = {'content': data_i['label'],
-                #                 'style': data_i['style_image'],
-                #
-                #                        'target': data_i['target'], 'user': data_i['user'], 'filename': data_i['filename']}
-                visualize_sidebyside(data_visuals, visualizer, epoch, iter_counter.total_steps_so_far, limit=8, log_key='train')
-
                 with torch.no_grad():
                     # Log some stuff for training
                     validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
-                                              limit=opt.validation_limit, log_key='train')
+                                              limit=opt.validation_limit, log_key='train/rand')
+                    validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
+                                              limit=opt.validation_limit, log_key='train/fix')
+
                     # Output VALIDATION images
-                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val')
+                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/rand')
+                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/fix')
 
             if iter_counter.needs_saving():
                 print('saving the latest model (epoch %d, total_steps %d)' %
