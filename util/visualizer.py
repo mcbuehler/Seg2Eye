@@ -13,6 +13,7 @@ from PIL import Image
 
 from data.postprocessor import ImagePostprocessor
 from data.preprocessor import ImagePreprocessor
+from util.image_annotate import get_text_image
 from . import util
 import scipy.misc
 import numpy as np
@@ -127,29 +128,31 @@ class Visualizer():
         webpage.add_images(ims, txts, links, width=self.win_size)
 
 
-def visualize_sidebyside(data, visualizer, epoch=-1, total_steps_so_far=-1, limit=-1, key_fake='fake', key_content='label', key_target='target_original', key_style='style_image', log_key='', log=True, w=200, h=320):
+def visualize_sidebyside(data, visualizer, epoch=-1, total_steps_so_far=-1, limit=-1, key_fake='fake', key_content='label', key_target='target_original', key_style='style_image', log_key='', log=True, w=200, h=320, error_list=None):
     # Validation results
     visuals_val = list()
-    # Content val is between 0 and 3 -- do normalize
-    # content = ImagePostprocessor.to_255resized_imagebatch(data[key_content], w, h, as_tensor=True)
-    # fake = ImagePostprocessor.to_255resized_imagebatch(data[key_fake], w, h, as_tensor=True)
-    # target = ImagePostprocessor.resize(data[key_target], w, h, as_tensor=True).int()
-    # style = ImagePostprocessor.to_255resized_imagebatch(data[key_style], w, h, as_tensor=True)
+
+    if limit > 0:
+        # Apply the limit
+        for key in data:
+            data[key] = data[key][:limit]
 
     content = ImagePostprocessor.to_1resized_imagebatch(data[key_content], w, h, as_tensor=True)
     fake = ImagePostprocessor.to_1resized_imagebatch(data[key_fake], w, h, as_tensor=True)
     target = ImagePostprocessor.to_1resized_imagebatch(data[key_target], w, h, as_tensor=True)
     style = ImagePostprocessor.to_1resized_imagebatch(data[key_style], w, h, as_tensor=True)
+    # error_heatmap = torch.pow(fake - target, 2)
+    error_heatmap = ImagePostprocessor.get_error_map(fake, target)
     for i in range(len(data[key_fake])):
-        # Create image
-        # for e in [style[i], content[i], target[i], fake[i]]:
-        #     print(e.shape, e.dtype)
-        cat_val = torch.cat((style[i], content[i], target[i], fake[i]), dim=-1)
-        # TODO: solve issue with getting font
+        cat_val = torch.cat((style[i], content[i], target[i], fake[i], error_heatmap[i]), dim=-1)
+
         # # 4th component: text annotation with metadata
-        # text_val = get_text_image(f'{data_val["user"][0]}/{data_val["filename"][0]}', dim=(cat_val.shape[3], 50))
-        # text_val = torch.as_tensor([[text_val]])
-        # cat_val = torch.cat((cat_val, text_val), dim=2)
+        text = f'{data["user"][i]} / {data["filename"][0]}'
+        if error_list is not None:
+            err = error_list[i] * 1471
+            text += f' (err: {err:.2f})'
+        text_val = get_text_image(text, dim=(60, cat_val.shape[2])).unsqueeze(0)#f'{data_val["user"][0]}/{data_val["filename"][0]}', dim=(cat_val.shape[3], 50)
+        cat_val = torch.cat((cat_val, text_val), dim=-2)
         #
         visuals_val.append((f'{log_key}/{i}', cat_val))
         if i > limit > 0:
