@@ -65,7 +65,7 @@ if is_validation and opt.write_error_log:
     error_log.create_dataset("error", shape=(N,), dtype=np.float)
     error_log.create_dataset("user", shape=(N,), dtype='S4')
     error_log.create_dataset("filename", shape=(N,), dtype='S13')
-    error_log.create_dataset("visualisation", shape=(N, 1, 320, 800), dtype=np.uint8)
+    error_log.create_dataset("visualisation", shape=(N, 1, 380, 1000), dtype=np.uint8)
 
 
 print("Running test script.")
@@ -119,6 +119,8 @@ for i, data_i in enumerate(dataloader):
             # vis = np.array([v for k, v in visuals.items()])
             vis = visuals
             vis = np.array([np.copy(v) for k, v in visuals.items()])
+            # vis are all floats in [-1, 1]
+            vis = (vis + 1) * 128
             error_log["visualisation"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = vis
 
 if is_validation:
