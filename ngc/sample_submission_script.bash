@@ -1,15 +1,40 @@
 #!/bin/bash
 
-# These parameters actually have effects!
-# TODO
+# Setup Parameters relevant to getting stuff running
+DATA_ROOT='/data/all.h5'
 
+##########################################
+## THESE PARAMETERS ACTUALLY HAVE EFFECTS!
+
+# input-related
+IMG_SIZE=256
+
+# model-related
+USE_VAE=1
+Z_DIM=256
+W_DIM=8
+NORM_G='spectralspadeinstance3x3'
+
+# training-related
 USE_APEX=1
+
+# loss-related
+LAMBDA_L2=10
+
+## END CONFIGURATION BLOCK
+###########################################
+
+# SOME CHECKS TO PREVENT MISTAKES OR CONFUSING BUGS
+if [[ $NORM_G == *"sync"* && "$USE_APEX" == "1" ]]; then echo 'SyncronizedBatchNorm2d incompatible with apex'; exit; fi
 
 # Construct experiment identifier
 # TODO
-EXPERIMENT=""
-EXPERIMENT+=""
-if [ "$USE_APEX" = "1" ]; then EXPERIMENT+="-apex"; fi
+EXPERIMENT="Seg2Eye${IMG_SIZE}"
+EXPERIMENT+="_z${Z_DIM}"
+EXPERIMENT+="_w${W_DIM}"
+EXPERIMENT+="_l2${LAMBDA_L2}"
+if [ "$USE_VAE" = "1" ]; then EXPERIMENT+="_vae"; fi
+if [ "$USE_APEX" = "1" ]; then EXPERIMENT+="_apex"; fi
 
 # Setup environment in docker instance
 CMD=""
@@ -39,13 +64,22 @@ CMD+="rsync -a --include '*/' --include '*.py' --exclude '*' ./ ${OUTPUT_DIR}/sr
 
 # Construct train script call
 CMD+="python3 train.py \
-	--name $EXPERIMENT \
+	--name ${EXPERIMENT} \
 	\
-	--dataroot /data/all.h5 \
+	--dataroot ${DATA_ROOT} \
 	--dataset_mode openeds \
+	--aspect-ratio 0.8 \
+	--load-size ${IMG_SIZE} \
+	--crop-size ${IMG_SIZE} \
 	\
 	--no_vgg_loss \
+	\
+	--z_dim ${Z_DIM} \
+	--w_dim ${W_DIM} \
+	\
+	--lambda_l2 ${LAMBDA_L2} \
 "
+if [ "$USE_VAE" == "1" ]; then CMD+=" --spadeStyleGen"; fi
 if [ "$USE_APEX" == "1" ]; then CMD+=" --use_apex"; fi
 CMD+=";"
 
