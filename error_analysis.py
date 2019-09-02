@@ -45,7 +45,7 @@ def select_n(best=True, n=20):
 
     for idx in idx_selected:
         visualisation = error_log["visualisation"][idx]
-        visualisation = Image.fromarray(visualisation)
+        visualisation = Image.fromarray(visualisation.transpose(1, 2, 0))
         filename = error_log['filename'][idx].decode('utf-8')
         visualisation.save(os.path.join(folder_out, f"{filename}.png"))
 
