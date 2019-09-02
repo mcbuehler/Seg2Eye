@@ -159,7 +159,15 @@ class OpenEDSDataset(BaseDataset):
         return self.N
 
     def get_validation_indices(self):
-        return self.N_start
+        # All first indices of  a person
+        indices = self.N_start
+        # All last indices of a person
+        indices += [idx - 1 for idx in self.N_start[1:]] + [self.N - 1]
+        return indices
+
+    def get_random_indices(self, n):
+        indices = np.random.choice(list(range(self.N)), n)
+        return indices
 
     @classmethod
     def unsqueeze_batch(cls, batch):
