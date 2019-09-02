@@ -49,10 +49,13 @@ class GANLoss(nn.Module):
             return self.fake_label_tensor.expand_as(input)
 
     def get_zero_tensor(self, input):
-        if self.zero_tensor is None:
-            self.zero_tensor = self.Tensor(1).fill_(0)
-            self.zero_tensor.requires_grad_(False)
-        return self.zero_tensor.expand_as(input)
+        if self.opt.use_apex:
+            return torch.zeros_like(input)
+        else:
+            if self.zero_tensor is None:
+                self.zero_tensor = self.Tensor(1).fill_(0)
+                self.zero_tensor.requires_grad_(False)
+            return self.zero_tensor.expand_as(input)
 
     def loss(self, input, target_is_real, for_discriminator=True):
         if self.gan_mode == 'original':  # cross entropy loss

@@ -34,13 +34,18 @@ class Pix2PixTrainer():
             # Use APEX if requested
             if opt.use_apex:
                 from apex import amp
-                amp.initialize(self.pix2pix_model, optimizers=[self.optimizer_G, self.optimizer_D])
+                self.pix2pix_model, [self.optimizer_G, self.optimizer_D] = \
+                    amp.initialize(
+                        self.pix2pix_model,
+                        optimizers=[self.optimizer_G, self.optimizer_D],
+                    )
 
     def run_generator_one_step(self, data):
+        self.pix2pix_model.train()
         self.optimizer_G.zero_grad()
         g_losses, generated = self.pix2pix_model(data, mode='generator')
         g_loss = sum(g_losses.values()).mean()
-        if opt.use_apex:
+        if self.opt.use_apex:
             from apex import amp
             with amp.scale_loss(g_loss, self.optimizer_G) as scaled_loss:
                 scaled_loss.backward()
@@ -52,10 +57,11 @@ class Pix2PixTrainer():
         self.generated = generated
 
     def run_discriminator_one_step(self, data):
+        self.pix2pix_model.train()
         self.optimizer_D.zero_grad()
         d_losses = self.pix2pix_model(data, mode='discriminator')
         d_loss = sum(d_losses.values()).mean()
-        if opt.use_apex:
+        if self.opt.use_apex:
             from apex import amp
             with amp.scale_loss(d_loss, self.optimizer_D) as scaled_loss:
                 scaled_loss.backward()
