@@ -181,9 +181,18 @@ class SPADE_STYLE_Block(nn.Module):
         spade_config_str = opt.norm_G.replace('spectral', '')
         self.spade = SPADE(spade_config_str, fin, opt.semantic_nc)
         self.adain = ApplyStyle(opt.w_dim, channels=fin, use_wscale=False)
+        self.combine_mode = opt.combine_mode
 
     def forward(self, x, segmap, latent_style):
-        output_spade = self.spade(x, segmap)
         output_adain = self.adain(x, latent_style)
-        out = (output_spade + output_adain) / 2
+        if self.combine_mode == 'add':
+            # We compute adain and spade from input x and add the outputs of the two blocks
+            output_spade = self.spade(x, segmap)
+            out = (output_spade + output_adain) / 2
+        elif self.combine_mode == 'seq':
+            # We compute adain from the input x and spade from the output of adain
+            output_spade = self.spade(output_adain, segmap)
+            out = output_spade
+        else:
+            raise ValueError(f"Invalid mode for combining style and spade: {self.combine_mode}")
         return out
