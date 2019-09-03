@@ -34,6 +34,9 @@ class OpenEDSDataset(BaseDataset):
         self.root = opt.dataroot
         self.dataset_key = opt.dataset_key
         print(f"Dataset key: {self.dataset_key}")
+        self.key_style_images = "images_ss" if self.dataset_key == "test" else "images_gen"
+        self.label_key = "labels_ss" if self.dataset_key != "test" else "labels_gen"
+        self.key_filenames = "labels_gen_filenames" if self.dataset_key == "test" else "images_ss_filenames"
 
         self.h5_in_file = None
         self._setup_data_file()
@@ -94,8 +97,8 @@ class OpenEDSDataset(BaseDataset):
         user, idx_target_image = self._get_tuple_identifier_from_index(index)
         # style_image = np.random.choice(self.h5_in[user]["images_gen"])
 
-        label_key = "labels_ss" if self.dataset_key != "test" else "labels_gen"
-        mask = self.h5_in[user][label_key][idx_target_image]
+
+        mask = self.h5_in[user][self.label_key][idx_target_image]
 
         params = get_params(self.opt, mask.shape)
         # It is important to use nearest neighbour interpolation for resizing the mask. Otherwise we might get
@@ -105,12 +108,10 @@ class OpenEDSDataset(BaseDataset):
         mask_tensor = transform_mask(mask) * 255.0
 
         # For test images we do not have generative images.
-        key_style_images = "images_ss" if self.dataset_key == "test" else "images_gen"
-        style_img_idx = np.random.choice(list(range(self.h5_in[user][key_style_images].shape[0])))
-        style_image = self.h5_in[user][key_style_images][style_img_idx]
+        style_img_idx = np.random.choice(list(range(self.h5_in[user][self.key_style_images].shape[0])))
+        style_image = self.h5_in[user][self.key_style_images][style_img_idx]
 
-        key_filenames = "labels_gen_filenames" if self.dataset_key == "test" else "images_ss_filenames"
-        filename = self.h5_in[user][key_filenames][idx_target_image].decode('utf-8')
+        filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
 
         transform_image = get_transform(self.opt, params)
         style_image_tensor = transform_image(style_image)
@@ -168,6 +169,24 @@ class OpenEDSDataset(BaseDataset):
     def get_random_indices(self, n):
         indices = np.random.choice(list(range(self.N)), n)
         return indices
+
+    def get_style_images(self, user_id, n):
+        # user_idx = self.user_ids.index(user_id)
+        # n_user = self.N_start[user_idx + 1] - self.N_start[user_idx]
+        # within_idx = np.random.choice(list(range(n_user)), size=n)
+        # selected_idx = [self.N_start[user_idx] + i for i in within_idx]
+        # return selected_idx
+        n_images = self.h5_in[user_id][self.key_style_images].shape[0]
+        selected_idx = np.random.choice(list(range(n_images)), n)
+        style_images = [self.h5_in[user_id][self.key_style_images][i] for i in selected_idx]
+
+        size = style_images[0].shape[-2:]
+        # Convert to tensor
+        params = get_params(self.opt, size)  # Only give h and w
+        transform_image = get_transform(self.opt, params)
+        tensors = [transform_image(img) for img in style_images]
+        style_image_tensor = torch.stack(tensors)
+        return style_image_tensor
 
     @classmethod
     def unsqueeze_batch(cls, batch):
