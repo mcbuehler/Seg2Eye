@@ -28,7 +28,7 @@ class OpenEDSDataset(BaseDataset):
         #                     help='If specified, skip sanity check of correct label-image file pairing')
         return parser
 
-    def initialize(self, opt):
+    def initialize(self, opt):  #TODO: print style sampling method
         self.opt = opt
 
         self.root = opt.dataroot
@@ -99,22 +99,16 @@ class OpenEDSDataset(BaseDataset):
 
 
         mask = self.h5_in[user][self.label_key][idx_target_image]
-
-        params = get_params(self.opt, mask.shape)
         # It is important to use nearest neighbour interpolation for resizing the mask. Otherwise we might get
         # values that are out of the allowed range.
-        transform_mask = get_transform(self.opt, params, method=cv2.INTER_NEAREST, normalize=False)
+        transform_mask = self._get_transform(mask.shape, method=cv2.INTER_NEAREST, normalize=False)
         # the toTensor method in transform will convert uint8 [0, 255] to foat [-1, 1], so we need to revert this.
         mask_tensor = transform_mask(mask) * 255.0
 
-        # For test images we do not have generative images.
-        style_img_idx = np.random.choice(list(range(self.h5_in[user][self.key_style_images].shape[0])))
-        style_image = self.h5_in[user][self.key_style_images][style_img_idx]
+        # Get input_ns style images (already preprocessed to tensor)
+        style_image_tensor = self.get_style_images(user, self.opt.input_ns)
 
         filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
-
-        transform_image = get_transform(self.opt, params)
-        style_image_tensor = transform_image(style_image)
 
         if torch.max(mask_tensor) > 3:
             print(user, idx_target_image, filename)
@@ -140,6 +134,7 @@ class OpenEDSDataset(BaseDataset):
                       'style_image': style_image_tensor
                       }
         if self.dataset_key != "test":
+            transform_image = self._get_transform(mask.shape)
             target_image = np.array(self.h5_in[user]["images_ss"][idx_target_image])
             target_image_tensor = transform_image(target_image)
             input_dict = {**input_dict,
@@ -159,6 +154,11 @@ class OpenEDSDataset(BaseDataset):
     def __len__(self):
         return self.N
 
+    def _get_transform(self, size, **kwargs):
+        params = get_params(self.opt, size)  # Only give h and w
+        transform_image = get_transform(self.opt, params, **kwargs)
+        return transform_image
+
     def get_validation_indices(self):
         # All first indices of  a person
         indices = self.N_start
@@ -170,6 +170,15 @@ class OpenEDSDataset(BaseDataset):
         indices = np.random.choice(list(range(self.N)), n)
         return indices
 
+    def _sample_style_idx(self, n_images, n):
+        if self.opt.style_sample_method == 'random':
+            indices = np.random.choice(list(range(n_images)), n)
+        elif self.opt.style_sample_method == 'first':
+            indices = list(range(min(n,n_images)))
+        else:
+            raise ValueError(f"Invalid style sampling method: {self.opt.style_sample_method}")
+        return indices
+
     def get_style_images(self, user_id, n):
         # user_idx = self.user_ids.index(user_id)
         # n_user = self.N_start[user_idx + 1] - self.N_start[user_idx]
@@ -177,13 +186,14 @@ class OpenEDSDataset(BaseDataset):
         # selected_idx = [self.N_start[user_idx] + i for i in within_idx]
         # return selected_idx
         n_images = self.h5_in[user_id][self.key_style_images].shape[0]
-        selected_idx = np.random.choice(list(range(n_images)), n)
+        selected_idx = self._sample_style_idx(n_images, n)
+
         style_images = [self.h5_in[user_id][self.key_style_images][i] for i in selected_idx]
 
+        # Preprocessing
         size = style_images[0].shape[-2:]
         # Convert to tensor
-        params = get_params(self.opt, size)  # Only give h and w
-        transform_image = get_transform(self.opt, params)
+        transform_image = self._get_transform(size)
         tensors = [transform_image(img) for img in style_images]
         style_image_tensor = torch.stack(tensors)
         return style_image_tensor
