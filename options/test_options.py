@@ -18,5 +18,6 @@ class TestOptions(BaseOptions):
         parser.set_defaults(serial_batches=True)
         parser.set_defaults(no_flip=True)
         parser.set_defaults(phase='test')
+        parser.set_defaults(style_sample_method='first')
         self.isTrain = False
         return parser

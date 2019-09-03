@@ -41,6 +41,10 @@ class BaseOptions():
         parser.add_argument('--label_nc', type=int, default=5, help='# of input label classes without unknown class. If you have unknown class as class label, specify --contain_dopntcare_label.')
         parser.add_argument('--input_nc', type=int, default=1, help='# of input image channels')
         parser.add_argument('--output_nc', type=int, default=1, help='# of output image channels')
+        parser.add_argument('--input_ns', type=int, default=1, help='Number of style inputs')
+        parser.add_argument('--style_aggr_method', type=str, default='mean', help='Style aggregation method', choices=('mean', 'max'))
+        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first'))
+        parser.add_argument('--style_aggr_space', type=str, default='z', help='Where to aggregate multiple style images', choices=('z', 'w'))
         # parser.add_argument('--output_wh', type=int, nargs='+', default=(400, 640), help='width and height of output image')
 
         # for setting inputs

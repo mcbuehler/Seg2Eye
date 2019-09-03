@@ -29,6 +29,10 @@ class Pix2PixModel(torch.nn.Module):
             if self.use_gpu():
                 self.downscale_z.cuda()
 
+        if self.opt.input_ns > 1:
+            # Can be mean or max
+            self.style_aggregation_method = self._get_style_aggregation_method()
+
         # set loss functions
         if opt.isTrain:
             self.criterionGAN = networks.GANLoss(
@@ -61,7 +65,7 @@ class Pix2PixModel(torch.nn.Module):
             return g_loss, generated
         elif mode == 'discriminator':
             d_loss = self.compute_discriminator_loss(
-                input_semantics, target_image)
+                input_semantics, style_image, target_image)
             return d_loss
         elif mode == 'encode_only':
             z, mu, logvar = self.encode_z(style_image)
@@ -155,8 +159,7 @@ class Pix2PixModel(torch.nn.Module):
         if self.opt.use_vae:
             G_losses['KLD'] = KLD_loss
 
-        pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, style_image)
+        pred_fake, pred_real = self.discriminate(input_semantics, fake_image, target_image)
 
         G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                             for_discriminator=False)
@@ -190,7 +193,7 @@ class Pix2PixModel(torch.nn.Module):
 
         return G_losses, fake_image
 
-    def compute_discriminator_loss(self, input_semantics, real_image):
+    def compute_discriminator_loss(self, input_semantics, real_image, target_image):
         D_losses = {}
         with torch.no_grad():
             fake_image, _ = self.generate_fake(input_semantics, real_image)
@@ -198,7 +201,7 @@ class Pix2PixModel(torch.nn.Module):
             fake_image.requires_grad_()
 
         pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, real_image)
+            input_semantics, fake_image, target_image)
 
         D_losses['D/Fake'] = self.criterionGAN(pred_fake, False,
                                                for_discriminator=True)
@@ -212,13 +215,58 @@ class Pix2PixModel(torch.nn.Module):
         z = self.reparameterize(mu, logvar)
         return z, mu, logvar
 
+    def _get_style_aggregation_method(self):
+        if self.opt.style_aggr_method == 'mean':
+            return lambda tensor: torch.mean(tensor, dim=1)
+        elif self.opt.style_aggr_method == 'max':
+            # torch.max returns indices and values, but we only want values
+            return lambda tensor: torch.max(tensor, dim=1).values
+        else:
+            raise ValueError(f"Aggregation method not found: {self.opt.style_aggr_method}")
+
+    def _compute_multiple_z(self, real_image):
+        list_z = list()
+        # We have several style images per input sample
+        for batch_i in range(real_image.shape[0]):
+            # now we have n style images that we treat as a batch for one sample
+            # mu will have shape (opt.input_ns, opt.dim_z)
+            mu, _ = self.netE(real_image[batch_i])
+            list_z.append(mu)
+        multiple_z = torch.stack(list_z, dim=0)
+        # batchSize, input_ns, z_dim
+        assert multiple_z.shape == (*real_image.shape[:2], self.opt.z_dim)
+        return multiple_z
+
+    def _compute_aggregated_z(self, real_image):
+        # We have several style images per input sample
+        multiple_z = self._compute_multiple_z(real_image)
+        z = self.style_aggregation_method(multiple_z)
+        assert z.shape == (real_image.shape[0], self.opt.z_dim)
+        return z
+
+    def _compute_aggregated_w(self, real_image):
+        # We have several style images per input sample
+        multiple_z = self._compute_multiple_z(real_image)
+        # multiple_w has shape (bs, input_ns, w_dim)
+        multiple_w = torch.stack([self.downscale_z(z) for z in multiple_z])
+        # w has shape (bs, w_dim)
+        w = self.style_aggregation_method(multiple_w)
+        assert w.shape == (real_image.shape[0], self.opt.w_dim)
+        return w
+
     def encode_w(self, real_image):
-        mu, _ = self.netE(real_image)
-        # netE outputs a mu of dim opt.z_dim
-        # netE ouputs mu and var, but we are currently only interested in mu (representing the style w)
-        # For readability.
-        # We go from opt.dim_z to opt.w_dim
-        w = self.downscale_z(mu)
+        if len(real_image.shape) == 5:
+            if self.opt.style_aggr_space == 'z':
+                # We aggregate in z space
+                z = self._compute_aggregated_z(real_image)
+                w = self.downscale_z(z)
+            elif self.opt.style_aggr_space == 'w':
+                # We compute input_ns mu vectors for each sample. multiple_z.shape = (bs, input_ns, z_dim)
+                w = self._compute_aggregated_w(real_image)
+        else:
+            # netE outputs a mu of dim opt.z_dim
+            z, _ = self.netE(real_image)
+            w = self.downscale_z(z)
         return w
 
     def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):

@@ -62,4 +62,5 @@ def create_inference_dataloader(opt, dataset_key='validation'):
     opt.dataset_key = dataset_key
     opt.serial_batches = True
     opt.isTrain = False
+    opt.style_sample_method = 'first'
     return create_dataloader(opt)

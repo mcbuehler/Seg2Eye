@@ -17,7 +17,7 @@ from util.image_annotate import get_text_image
 from . import util
 import scipy.misc
 import numpy as np
-
+from torchvision.utils import make_grid
 try:
     from StringIO import StringIO  # Python 2.7
 except ImportError:
@@ -140,6 +140,10 @@ def visualize_sidebyside(data, visualizer, epoch=-1, total_steps_so_far=-1, limi
     content = ImagePostprocessor.to_1resized_imagebatch(data[key_content], w, h, as_tensor=True)
     fake = ImagePostprocessor.to_1resized_imagebatch(data[key_fake], w, h, as_tensor=True)
     target = ImagePostprocessor.to_1resized_imagebatch(data[key_target], w, h, as_tensor=True)
+    if len(data[key_style].shape) == 5:
+        # We have multiple style images. Let's take max 4 per sample and create a grid for each sample
+        style_grids = [make_grid(data[key_style][i, :4], nrow=2, padding=0) for i in range(data[key_style].shape[0])]
+        data[key_style] = torch.mean(torch.stack(style_grids, dim=0), dim=1).unsqueeze(1)
     style = ImagePostprocessor.to_1resized_imagebatch(data[key_style], w, h, as_tensor=True)
     # error_heatmap = torch.pow(fake - target, 2)
     error_heatmap = ImagePostprocessor.get_error_map(fake, target)
