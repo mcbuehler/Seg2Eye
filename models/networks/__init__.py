@@ -4,6 +4,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 
 import torch
+import torch.nn as nn
 from models.networks.base_network import BaseNetwork
 from models.networks.loss import *
 from models.networks.discriminator import *
@@ -44,6 +45,8 @@ def create_network(cls, opt):
         assert(torch.cuda.is_available())
         net.cuda()
     net.init_weights(opt.init_type, opt.init_variance)
+    if len(opt.gpu_ids) > 0:
+        net = nn.DataParallel(net)
     return net
 
 

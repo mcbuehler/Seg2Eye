@@ -17,7 +17,8 @@ class Pix2PixTrainer():
     def __init__(self, opt):
         self.opt = opt
         self.pix2pix_model = Pix2PixModel(opt)
-        if len(opt.gpu_ids) > 0:
+        # if len(opt.gpu_ids) > 0:
+        if hasattr(self.pix2pix_model, 'module'):
             self.pix2pix_model = DataParallelWithCallback(self.pix2pix_model,
                                                           device_ids=opt.gpu_ids)
             self.pix2pix_model_on_one_gpu = self.pix2pix_model.module
@@ -30,21 +31,44 @@ class Pix2PixTrainer():
                 self.pix2pix_model_on_one_gpu.create_optimizers(opt)
             self.old_lr = opt.lr
 
+            # Use APEX if requested
+            if opt.use_apex:
+                from apex import amp
+                self.pix2pix_model, [self.optimizer_G, self.optimizer_D] = \
+                    amp.initialize(
+                        self.pix2pix_model,
+                        optimizers=[self.optimizer_G, self.optimizer_D],
+                    )
+
     def run_generator_one_step(self, data):
+        self.pix2pix_model.train()
         self.optimizer_G.zero_grad()
         g_losses, generated = self.pix2pix_model(data, mode='generator')
         g_loss = sum(g_losses.values()).mean()
-        g_loss.backward()
-        self.optimizer_G.step()
+        if self.opt.use_apex:
+            from apex import amp
+            with amp.scale_loss(g_loss, self.optimizer_G) as scaled_loss:
+                scaled_loss.backward()
+            self.optimizer_G.step()
+        else:
+            g_loss.backward()
+            self.optimizer_G.step()
         self.g_losses = g_losses
         self.generated = generated
 
     def run_discriminator_one_step(self, data):
+        self.pix2pix_model.train()
         self.optimizer_D.zero_grad()
         d_losses = self.pix2pix_model(data, mode='discriminator')
         d_loss = sum(d_losses.values()).mean()
-        d_loss.backward()
-        self.optimizer_D.step()
+        if self.opt.use_apex:
+            from apex import amp
+            with amp.scale_loss(d_loss, self.optimizer_D) as scaled_loss:
+                scaled_loss.backward()
+            self.optimizer_D.step()
+        else:
+            d_loss.backward()
+            self.optimizer_D.step()
         self.d_losses = d_losses
 
     def get_latest_losses(self, include_log_losses=False):
