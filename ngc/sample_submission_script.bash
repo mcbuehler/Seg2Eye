@@ -17,7 +17,7 @@ NORM_G='spectralspadeinstance3x3'
 
 # training-related
 BATCH_SIZE=1
-USE_APEX=0
+USE_APEX=1
 
 # loss-related
 LAMBDA_L2=10
