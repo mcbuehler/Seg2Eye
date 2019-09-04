@@ -37,11 +37,13 @@ def calculate_relative_sum_mse(data):
     real = ImagePostprocessor.as_batch(data["target_original"], as_tensor=True)
 
     mse_error = calculate_mse_for_images(fake, real)
-    relative_mse_error = torch.mean(mse_error) * 1471
-    return relative_mse_error, mse_error
+    relative_mse_error = mse_error * 1471
+    mu = torch.mean(relative_mse_error)
+    std = torch.std(relative_mse_error)
+    return mu, std, mse_error
 
 
-def run_validation(dataloader, pix2pix_model, visualizer, epoch, iter_counter, limit=500, visualisation_limit=4, log_key='val', fixed=True):
+def run_validation(dataloader, pix2pix_model, visualizer, epoch, iter_counter, limit=500, visualisation_limit=4, log_key='val', fixed=True, g_logger=None):
     if 'rand' in log_key:
         validation_indices = dataloader.dataset.get_random_indices(limit)
     else:
@@ -59,11 +61,12 @@ def run_validation(dataloader, pix2pix_model, visualizer, epoch, iter_counter, l
 
     print(f"Running logging for dataset '{log_key}' on {limit} images")
     # data = get_validation_data(dataloader, pix2pix_model, limit=limit)
-    mse_errors_relative, error_list = calculate_relative_sum_mse(result)
+    mean_errors_relative, std_errors_relative, error_list = calculate_relative_sum_mse(result)
 
-    errors_dict = {f'mse/{log_key}': mse_errors_relative}
+    errors_dict = {f'mse/{log_key}': mean_errors_relative, f'mse/{log_key}/std': std_errors_relative}
     visualizer.print_current_errors(epoch, iter_counter.total_steps_so_far, errors_dict, t=0)
     visualizer.plot_current_errors(errors_dict, iter_counter.total_steps_so_far)
 
     visualize_sidebyside(result, visualizer, epoch, iter_counter.total_steps_so_far, limit=visualisation_limit, log_key=log_key, error_list=error_list)
-    # calculate_mse(result, visualizer, epoch, iter_counter.total_steps_so_far, limit=limit, log_key=log_key)
+    errors_dict = OrderedDict([('epoch', epoch), ('n_steps', iter_counter.total_steps_so_far)] + [(k, np.copy(v.cpu())) for k, v in errors_dict.items()])
+    g_logger.update_or_append_row(errors_dict)
