@@ -10,35 +10,25 @@ python test.py --name $name --dataset_mode openeds \
 
 import os
 import re
-from collections import OrderedDict
 
-import cv2
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
-from PIL import Image
-from torch import functional
 
 import data
-from data.base_dataset import __resize
 from data.postprocessor import ImagePostprocessor
-from data.preprocessor import ImagePreprocessor
-from models.networks import openEDSaccuracy
-from options.test_options import TestOptions
 from models.pix2pix_model import Pix2PixModel
+from options.test_options import TestOptions
 from util.validation import calculate_mse_for_images
 from util.visualizer import Visualizer, visualize_sidebyside
 
 opt = TestOptions().parse()
-# opt.serial_batches = False
 dataloader = data.create_dataloader(opt)
 
 model = Pix2PixModel(opt)
-model.eval()
 
-
+opt.how_many = 100
 visualizer = Visualizer(opt)
 
 base_path = os.getcwd()
@@ -46,7 +36,6 @@ if opt.checkpoints_dir.startswith("./"):
     opt.checkpoints_dir = os.path.join(base_path, opt.checkpoints_dir[2:])
 else:
     opt.checkpoints_dir = os.path.join(base_path, opt.checkpoints_dir)
-
 
 results_dir = os.path.join(opt.checkpoints_dir, opt.name, opt.results_dir, opt.dataset_key)
 if not os.path.exists(results_dir):
@@ -56,7 +45,6 @@ if not os.path.exists(results_dir):
 # We have different behaviour for validation and test
 is_validation = opt.dataset_key in ["validation", "train"]
 
-# squared_losses_per_sample = {}
 filepaths = list()
 
 if is_validation and opt.write_error_log:
@@ -76,27 +64,25 @@ print(f"write error log: {opt.write_error_log}")
 
 all_errors = list()
 for i, data_i in enumerate(dataloader):
+
+    # plt.imshow(fake_resized[0, 0].cpu().detach().numpy(), cmap='gray')
+    plt.imshow(data_i['style_image'][0, 0, 0].cpu().detach().numpy(), cmap='gray')
+
     if i * opt.batchSize >= opt.how_many:
         break
-    # data_i["target_original"] = data_i["target_original"].unsqueeze(1)
 
     print(f"Processing batch {i} / {int(min(dataloader.dataset.N, opt.how_many) / opt.batchSize)}")
 
     fake = model.forward(data_i, mode="inference").cpu()
 
-    # generated = model(data_i, mode='inference')
-
     img_filename = data_i['filename']
     # The test file names are only 12 characters long, so we have dot to remove
     img_filename = [re.sub(r'\.', '', f) for f in img_filename]
 
-    # fake_images = ImagePreprocessor.unnormalize(np.copy(generated.detach().cpu()))
-
-    # generated = ImagePreprocessor.fake_to_target(result_data["fake"])
     fake_resized = ImagePostprocessor.to_255resized_imagebatch(fake, as_tensor=True)
 
     if not is_validation:
-    # We are testing
+        # We are testing
         for b in range(len(img_filename)):
             result_path = os.path.join(results_dir, img_filename[b] + ".npy")
             assert torch.min(fake_resized[b]) >= 0 and torch.max(fake_resized[b]) <= 255
@@ -115,8 +101,6 @@ for i, data_i in enumerate(dataloader):
             error_log["user"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = np.array(data_i["user"], dtype='S4')
             error_log["filename"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = np.array(data_i["filename"], dtype='S13')
             error_log["error"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = errors
-            # error_log["visualisation"][i * opt.batchSize: i * opt.batchSize + opt.batchSize] = visualisations
-            # vis = np.array([v for k, v in visuals.items()])
             vis = visuals
             vis = np.array([np.copy(v) for k, v in visuals.items()])
             # vis are all floats in [-1, 1]
