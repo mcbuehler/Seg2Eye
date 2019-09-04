@@ -219,31 +219,38 @@ class Pix2PixModel(torch.nn.Module):
         else:
             raise ValueError(f"Aggregation method not found: {self.opt.style_aggr_method}")
 
-    def _compute_multiple_z(self, real_image):
-        list_z = list()
+    def _compute_multiple_netE(self, real_image):
+        outputs_netE = list()
         # We have several style images per input sample
         for batch_i in range(real_image.shape[0]):
             # now we have n style images that we treat as a batch for one sample
             # mu will have shape (opt.input_ns, opt.dim_z)
             mu, _ = self.netE(real_image[batch_i])
-            list_z.append(mu)
-        multiple_z = torch.stack(list_z, dim=0)
-        # batchSize, input_ns, z_dim
-        assert multiple_z.shape == (*real_image.shape[:2], self.opt.z_dim)
-        return multiple_z
+            outputs_netE.append(mu)
+        outputs_netE_tensor = torch.stack(outputs_netE, dim=0)
+        # batchSize, input_ns, z_dim if opt.use_z else w_dim
+        if self.opt.use_z:
+            assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.z_dim)
+        else:
+            assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.w_dim)
+        return outputs_netE_tensor
 
     def _compute_aggregated_z(self, real_image):
+        assert self.opt.use_z, "You need to set use_z to True"
         # We have several style images per input sample
-        multiple_z = self._compute_multiple_z(real_image)
+        multiple_z = self._compute_multiple_netE(real_image)
         z = self.style_aggregation_method(multiple_z)
         assert z.shape == (real_image.shape[0], self.opt.z_dim)
         return z
 
     def _compute_aggregated_w(self, real_image):
         # We have several style images per input sample
-        multiple_z = self._compute_multiple_z(real_image)
-        # multiple_w has shape (bs, input_ns, w_dim)
-        multiple_w = torch.stack([self.netE(z, mode='downscale') for z in multiple_z])
+        if self.opt.use_z:
+            multiple_z = self._compute_multiple_netE(real_image)
+            # multiple_w has shape (bs, input_ns, w_dim)
+            multiple_w = torch.stack([self.netE(z, mode='downscale') for z in multiple_z])
+        else:
+            multiple_w = self._compute_multiple_netE(real_image)
         # w has shape (bs, w_dim)
         w = self.style_aggregation_method(multiple_w)
         assert w.shape == (real_image.shape[0], self.opt.w_dim)
@@ -251,15 +258,18 @@ class Pix2PixModel(torch.nn.Module):
 
     def encode_w(self, real_image):
         if len(real_image.shape) == 5:  #shape[1] is input_ns
-            if self.opt.style_aggr_space == 'z':
+            if self.opt.use_z and self.opt.style_aggr_space == 'z':
                 # We aggregate in z space
                 z = self._compute_aggregated_z(real_image)
                 w = self.netE(z, mode='downscale')
             elif self.opt.style_aggr_space == 'w':
                 # We compute input_ns mu vectors for each sample. multiple_z.shape = (bs, input_ns, z_dim)
+                # This is the way we should be taking if we do not use a z space
                 w = self._compute_aggregated_w(real_image)
         else:
             # netE outputs a mu of dim opt.z_dim
+            # This is legacy code for backward compatibility
+            # and not used any more in more recent experiments (3.9.19 and newer)
             z, _ = self.netE(real_image)
             w = self.netE(z, mode='downscale')
         return w

@@ -29,8 +29,14 @@ class ConvEncoder(BaseNetwork):
             self.layer6 = norm_layer(nn.Conv2d(ndf * 8, ndf * 8, kw, stride=2, padding=pw))
 
         self.so = s0 = 4
-        self.fc_mu = nn.Linear(ndf * 8 * s0 * s0, opt.z_dim)
-        self.fc_var = nn.Linear(ndf * 8 * s0 * s0, opt.z_dim)
+        if opt.use_z:
+            self.fc_mu = nn.Linear(ndf * 8 * s0 * s0, opt.z_dim)
+            self.fc_var = nn.Linear(ndf * 8 * s0 * s0, opt.z_dim)
+        else:
+            # If we do not use z, we directly collapse to w
+            self.fc_mu = nn.Linear(ndf * 8 * s0 * s0, opt.w_dim)
+            self.fc_var = nn.Linear(ndf * 8 * s0 * s0, opt.w_dim)
+
 
         self.actvn = nn.LeakyReLU(0.2, False)
         self.opt = opt
@@ -59,5 +65,6 @@ class ConvEncoder(BaseNetwork):
 
             return mu, logvar
 
-    def downscale(self, x):
-        return self.downscale_z(x)
+    def downscale(self, z):
+        w = self.downscale_z(z)
+        return w
