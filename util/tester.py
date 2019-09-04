@@ -20,8 +20,6 @@ import torch
 import data
 from data.postprocessor import ImagePostprocessor
 from models.networks import openEDSaccuracy
-from models.pix2pix_model import Pix2PixModel
-from options.train_options import TrainOptions
 from util.visualizer import Visualizer, visualize_sidebyside
 
 
