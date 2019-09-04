@@ -6,6 +6,7 @@ import torch
 from torch import nn
 import models.networks as networks
 import util.util as util
+from data.postprocessor import ImagePostprocessor
 
 
 class Pix2PixModel(torch.nn.Module):
@@ -24,14 +25,8 @@ class Pix2PixModel(torch.nn.Module):
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
 
-        if self.opt.spadeStyleGen:
-            self.downscale_z = nn.Linear(opt.z_dim, opt.w_dim)
-            if self.use_gpu():
-                self.downscale_z.cuda()
-
-        if self.opt.input_ns > 1:
-            # Can be mean or max
-            self.style_aggregation_method = self._get_style_aggregation_method()
+        # Should handle input_ns 1 and > 1
+        self.style_aggregation_method = self._get_style_aggregation_method()
 
         # set loss functions
         if opt.isTrain:
@@ -248,25 +243,25 @@ class Pix2PixModel(torch.nn.Module):
         # We have several style images per input sample
         multiple_z = self._compute_multiple_z(real_image)
         # multiple_w has shape (bs, input_ns, w_dim)
-        multiple_w = torch.stack([self.downscale_z(z) for z in multiple_z])
+        multiple_w = torch.stack([self.netE(z, mode='downscale') for z in multiple_z])
         # w has shape (bs, w_dim)
         w = self.style_aggregation_method(multiple_w)
         assert w.shape == (real_image.shape[0], self.opt.w_dim)
         return w
 
     def encode_w(self, real_image):
-        if len(real_image.shape) == 5:
+        if len(real_image.shape) == 5:  #shape[1] is input_ns
             if self.opt.style_aggr_space == 'z':
                 # We aggregate in z space
                 z = self._compute_aggregated_z(real_image)
-                w = self.downscale_z(z)
+                w = self.netE(z, mode='downscale')
             elif self.opt.style_aggr_space == 'w':
                 # We compute input_ns mu vectors for each sample. multiple_z.shape = (bs, input_ns, z_dim)
                 w = self._compute_aggregated_w(real_image)
         else:
             # netE outputs a mu of dim opt.z_dim
             z, _ = self.netE(real_image)
-            w = self.downscale_z(z)
+            w = self.netE(z, mode='downscale')
         return w
 
     def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):
