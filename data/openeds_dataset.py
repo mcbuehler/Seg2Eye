@@ -102,8 +102,6 @@ class OpenEDSDataset(BaseDataset):
         # the toTensor method in transform will convert uint8 [0, 255] to foat [-1, 1], so we need to revert this.
         mask_tensor = transform_mask(mask) * 255.0
 
-        print(params)
-
         # Get input_ns style images (already preprocessed to tensor)
         style_image_tensor = self.get_style_images(user, self.opt.input_ns)
 
@@ -113,18 +111,6 @@ class OpenEDSDataset(BaseDataset):
             print(user, idx_target_image, filename)
             print(np.max(mask))
             print(torch.max(mask_tensor))
-
-        # Real input to Discriminator
-        # random_user = np.random.choice(self.user_ids)
-        # real = np.random.choice(self.h5_in[random_user]["images_gen"])
-
-        # input_dict = {'label': mask_tensor,
-        #               'instance': 0,
-        #               'filename': filename,
-        #               'user': user,
-        #               'image': style_image_tensor,
-        #               'image_original': torch.from_numpy(style_image)
-        #               }
 
         input_dict = {'label': mask_tensor,
                       'instance': 0,
@@ -142,22 +128,6 @@ class OpenEDSDataset(BaseDataset):
                           'target': target_image_tensor,
                           'target_original': torch.from_numpy(np.expand_dims(target_image, axis=0)).int()
                           }
-
-
-            import matplotlib.pyplot as plt
-            plt.imshow(mask_tensor.cpu().detach().numpy()[0])
-            plt.show()
-
-            print()
-            plt.imshow(target_image_tensor.cpu().detach().numpy()[0])
-            plt.show()
-
-
-            print()
-            plt.imshow(target_image)
-            plt.show()
-
-
         return input_dict
 
     def get_particular(self, idx):
