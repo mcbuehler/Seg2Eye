@@ -17,7 +17,7 @@ NORM_G='spectralspadeinstance3x3'
 
 # training-related
 BATCH_SIZE=1
-USE_APEX=1
+USE_APEX=0
 
 # loss-related
 LAMBDA_L2=10
@@ -42,6 +42,10 @@ if [ "$USE_APEX" = "1" ]; then EXPERIMENT+="_apex"; fi
 CMD=""
 CMD+="git clone https://wookiengc:ETHZurich123@github.com/mcbuehler/Seg2Eye;"
 CMD+="cd Seg2Eye;"
+CMD+="cd models/networks/;"
+CMD+="git clone https://github.com/vacancy/Synchronized-BatchNorm-PyTorch;"
+CMD+="cp -rf Synchronized-BatchNorm-PyTorch/sync_batchnorm .;"
+CMD+="cd ../../;"
 CMD+="git checkout openeds;"
 CMD+="echo;"
 CMD+="git status;"  # Print cloned repo status
@@ -51,6 +55,8 @@ CMD+="echo;"
 #CMD+="git checkout openeds;"  # Switch git branch
 #CMD+="git checkout $COMMIT_HASH;"  # Checkout specified commit
 #CMD+="git pull;"
+CMD+="apt-get update;"
+CMD+="apt-get install -y rsync;"
 CMD+="pip install --user -r requirements.txt;"
 
 ## Copy over HDF files
@@ -68,12 +74,13 @@ CMD+="rsync -a --include '*/' --include '*.py' --exclude '*' ./ ${OUTPUT_DIR}/sr
 CMD+="python3 train.py \
 	--name ${EXPERIMENT} \
 	--tf_log \
+     --checkpoints_dir ${OUTPUT_DIR_STEM} \
 	\
 	--dataroot ${DATA_ROOT} \
 	--dataset_mode openeds \
-	--aspect-ratio 0.8 \
-	--load-size ${IMG_SIZE} \
-	--crop-size ${IMG_SIZE} \
+	--aspect_ratio 0.8 \
+	--load_size ${IMG_SIZE} \
+	--crop_size ${IMG_SIZE} \
 	\
 	--no_vgg_loss \
 	\
@@ -105,7 +112,7 @@ NGC_CMD="ngc batch run \
 	\
 	--result /results \
 	--workspace lpr-seonwook:/work:RW \
-	--datasetid XXXXXX:/data \
+	--datasetid 43993:/data \
 	\
 	--org nvidian \
 	--team lpr \
