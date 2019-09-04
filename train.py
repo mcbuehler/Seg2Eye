@@ -11,6 +11,7 @@ import torch
 from options.train_options import TrainOptions
 import util.validation as validation
 import data
+from util.tester import Tester
 from util.gsheet import GoogleSheetLogger
 from util.iter_counter import IterationCounter
 from util.visualizer import Visualizer
@@ -34,15 +35,22 @@ dataloader_val = data.create_inference_dataloader(opt)
 # create trainer for our model
 trainer = Pix2PixTrainer(opt)
 
+
 # create tool for counting iterations
 iter_counter = IterationCounter(opt, len(dataloader))
 
 # create tool for visualization
 visualizer = Visualizer(opt)
+full_val_limit = -1
 
-# opt.display_freq = 5
-# opt.print_freq = 5
-# opt.validation_limit = 5
+opt.display_freq = 5
+opt.print_freq = 5
+opt.validation_limit = 5
+opt.full_val_freq = 2
+full_val_limit = 10
+
+tester_train = Tester(opt, g_logger, dataset_key='train', visualize=True, visualizer=visualizer, limit=full_val_limit, write_error_log=False)
+tester_validation = Tester(opt, g_logger, dataset_key='validation', visualize=True, visualizer=visualizer, limit=full_val_limit, write_error_log=False)
 
 try:
     for epoch in iter_counter.training_epochs():
@@ -71,9 +79,9 @@ try:
             if iter_counter.needs_displaying():
                 with torch.no_grad():
                     # Log some stuff for training
-                    validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
+                    Tester.run_partial_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
                                               limit=opt.validation_limit, log_key='train/rand', g_logger=g_logger)
-                    validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
+                    Tester.run_partial_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
                                               limit=opt.validation_limit, log_key='train/fix', g_logger=g_logger)
 
                     # Output VALIDATION images
@@ -85,6 +93,12 @@ try:
                       (epoch, iter_counter.total_steps_so_far))
                 trainer.save('latest')
                 iter_counter.record_current_iter()
+
+            if iter_counter.needs_full_validation():
+                print("Running full validation")
+                with torch.no_grad():
+                    tester_train.run(model=trainer.pix2pix_model)
+
 
         trainer.update_learning_rate(epoch)
         iter_counter.record_epoch_end()

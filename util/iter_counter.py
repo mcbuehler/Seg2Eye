@@ -75,3 +75,6 @@ class IterationCounter():
 
     def needs_displaying(self):
         return (self.total_steps_so_far % self.opt.display_freq) < self.opt.batchSize
+
+    def needs_full_validation(self):
+        return (self.total_steps_so_far % self.opt.full_val_freq) < self.opt.batchSize
