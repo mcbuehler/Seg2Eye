@@ -40,6 +40,13 @@ if [ "$USE_APEX" = "1" ]; then EXPERIMENT+="_apex"; fi
 
 # Setup environment in docker instance
 CMD=""
+# > Install apex
+CMD+="pip uninstall -y apex;"
+CMD+="git clone https://github.com/NVIDIA/apex;"
+CMD+="cd apex;"
+CMD+="pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./;"
+CMD+="cd ..;"
+# > Clone source code
 CMD+="git clone https://wookiengc:ETHZurich123@github.com/mcbuehler/Seg2Eye;"
 CMD+="cd Seg2Eye;"
 CMD+="cd models/networks/;"
