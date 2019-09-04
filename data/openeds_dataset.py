@@ -2,15 +2,12 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
+import h5py
+import numpy as np
 import torch
 from cv2 import cv2
 
-from data.base_dataset import BaseDataset, get_params, get_transform
-from PIL import Image
-import util.util as util
-import os
-import numpy as np
-import h5py
+from data.base_dataset import BaseDataset, get_params, get_transform, flip
 
 
 class OpenEDSDataset(BaseDataset):
@@ -97,13 +94,15 @@ class OpenEDSDataset(BaseDataset):
         user, idx_target_image = self._get_tuple_identifier_from_index(index)
         # style_image = np.random.choice(self.h5_in[user]["images_gen"])
 
-
         mask = self.h5_in[user][self.label_key][idx_target_image]
         # It is important to use nearest neighbour interpolation for resizing the mask. Otherwise we might get
         # values that are out of the allowed range.
-        transform_mask = self._get_transform(mask.shape, method=cv2.INTER_NEAREST, normalize=False)
+        params = get_params(self.opt, mask.shape)  # Only give h and w
+        transform_mask = get_transform(self.opt, params,  method=cv2.INTER_NEAREST, normalize=False)
         # the toTensor method in transform will convert uint8 [0, 255] to foat [-1, 1], so we need to revert this.
         mask_tensor = transform_mask(mask) * 255.0
+
+        print(params)
 
         # Get input_ns style images (already preprocessed to tensor)
         style_image_tensor = self.get_style_images(user, self.opt.input_ns)
@@ -134,13 +133,30 @@ class OpenEDSDataset(BaseDataset):
                       'style_image': style_image_tensor
                       }
         if self.dataset_key != "test":
-            transform_image = self._get_transform(mask.shape)
+            transform_image = get_transform(self.opt, params)
             target_image = np.array(self.h5_in[user]["images_ss"][idx_target_image])
             target_image_tensor = transform_image(target_image)
+            # Only flip the target image now, otherwise it might be flipped twice
+            target_image = flip(target_image, params['flip'])
             input_dict = {**input_dict,
                           'target': target_image_tensor,
                           'target_original': torch.from_numpy(np.expand_dims(target_image, axis=0)).int()
                           }
+
+
+            import matplotlib.pyplot as plt
+            plt.imshow(mask_tensor.cpu().detach().numpy()[0])
+            plt.show()
+
+            print()
+            plt.imshow(target_image_tensor.cpu().detach().numpy()[0])
+            plt.show()
+
+
+            print()
+            plt.imshow(target_image)
+            plt.show()
+
 
         return input_dict
 
@@ -154,10 +170,9 @@ class OpenEDSDataset(BaseDataset):
     def __len__(self):
         return self.N
 
-    def _get_transform(self, size, **kwargs):
-        params = get_params(self.opt, size)  # Only give h and w
+    def _get_transform(self, params, **kwargs):
         transform_image = get_transform(self.opt, params, **kwargs)
-        return transform_image
+        return transform_image, params
 
     def get_validation_indices(self):
         # All first indices of  a person
@@ -193,7 +208,8 @@ class OpenEDSDataset(BaseDataset):
         # Preprocessing
         size = style_images[0].shape[-2:]
         # Convert to tensor
-        transform_image = self._get_transform(size)
+        params = get_params(self.opt, size)  # Only give h and w
+        transform_image =  get_transform(self.opt, params)
         tensors = [transform_image(img) for img in style_images]
         style_image_tensor = torch.stack(tensors)
         return style_image_tensor

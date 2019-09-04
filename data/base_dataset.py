@@ -68,7 +68,7 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         transform_list.append(transforms.Lambda(lambda img: __resize(img, w, h, method)))
 
     if opt.isTrain and not opt.no_flip:
-        transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+        transform_list.append(transforms.Lambda(lambda img: flip(img, params['flip'])))
 
     if toTensor:
         transform_list += [transforms.ToTensor()]
@@ -134,7 +134,7 @@ def __crop(img, pos, size):
     return img.crop((x1, y1, x1 + tw, y1 + th))
 
 
-def __flip(img, flip):
+def flip(img, flip):
     if flip:
         if isinstance(img, np.ndarray):
             # This is only for PIL images

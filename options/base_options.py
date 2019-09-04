@@ -73,7 +73,7 @@ class BaseOptions():
 
         self.initialized = True
 
-        parser.set_defaults(no_flip=True)
+        # parser.set_defaults(no_flip=True)
         return parser
 
     def gather_options(self):
