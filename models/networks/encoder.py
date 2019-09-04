@@ -35,21 +35,29 @@ class ConvEncoder(BaseNetwork):
         self.actvn = nn.LeakyReLU(0.2, False)
         self.opt = opt
 
-    def forward(self, x):
-        if x.size(2) != 256 or x.size(3) != 256:
-            x = F.interpolate(x, size=(256, 256), mode='bilinear')
+        self.downscale_z = nn.Linear(opt.z_dim, opt.w_dim)
 
-        x = self.layer1(x)
-        x = self.layer2(self.actvn(x))
-        x = self.layer3(self.actvn(x))
-        x = self.layer4(self.actvn(x))
-        x = self.layer5(self.actvn(x))
-        if self.opt.crop_size >= 256:
-            x = self.layer6(self.actvn(x))
-        x = self.actvn(x)
+    def forward(self, x, mode=''):
+        if mode == 'downscale':
+            return self.downscale(x)
+        else:
+            if x.size(2) != 256 or x.size(3) != 256:
+                x = F.interpolate(x, size=(256, 256), mode='bilinear')
 
-        x = x.view(x.size(0), -1)
-        mu = self.fc_mu(x)
-        logvar = self.fc_var(x)
+            x = self.layer1(x)
+            x = self.layer2(self.actvn(x))
+            x = self.layer3(self.actvn(x))
+            x = self.layer4(self.actvn(x))
+            x = self.layer5(self.actvn(x))
+            if self.opt.crop_size >= 256:
+                x = self.layer6(self.actvn(x))
+            x = self.actvn(x)
 
-        return mu, logvar
+            x = x.view(x.size(0), -1)
+            mu = self.fc_mu(x)
+            logvar = self.fc_var(x)
+
+            return mu, logvar
+
+    def downscale(self, x):
+        return self.downscale_z(x)
