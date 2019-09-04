@@ -11,13 +11,16 @@ import torch
 from options.train_options import TrainOptions
 import util.validation as validation
 import data
+from util.gsheet import GoogleSheetLogger
 from util.iter_counter import IterationCounter
-from util.visualizer import Visualizer, visualize_sidebyside
+from util.visualizer import Visualizer
 from trainers.pix2pix_trainer import Pix2PixTrainer
 
 # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # parse options
 opt = TrainOptions().parse()
+
+g_logger = GoogleSheetLogger(opt)
 
 # print options to help debugging
 print(' '.join(sys.argv))
@@ -69,13 +72,13 @@ try:
                 with torch.no_grad():
                     # Log some stuff for training
                     validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
-                                              limit=opt.validation_limit, log_key='train/rand')
+                                              limit=opt.validation_limit, log_key='train/rand', g_logger=g_logger)
                     validation.run_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
-                                              limit=opt.validation_limit, log_key='train/fix')
+                                              limit=opt.validation_limit, log_key='train/fix', g_logger=g_logger)
 
                     # Output VALIDATION images
-                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/rand')
-                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/fix')
+                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/rand', g_logger=g_logger)
+                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/fix', g_logger=g_logger)
 
             if iter_counter.needs_saving():
                 print('saving the latest model (epoch %d, total_steps %d)' %
