@@ -68,6 +68,8 @@ class BaseOptions():
         parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')
         parser.add_argument('--use_vae', action='store_true', help='enable training with an image encoder.')
 
+        parser.add_argument('--gsheet_secrets_json_file', default='config/gsheet.json', type=str, help='enable training with an image encoder.')
+
         self.initialized = True
 
         parser.set_defaults(no_flip=True)
