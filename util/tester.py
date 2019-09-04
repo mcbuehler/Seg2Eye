@@ -26,21 +26,16 @@ from util.visualizer import Visualizer, visualize_sidebyside
 
 
 class Tester:
-    def __init__(self, opt, g_logger, dataset_key='', visualize=False, visualizer=None, limit=-1, write_error_log=False):
+    def __init__(self, opt, g_logger, dataset_key, visualize=False, visualizer=None, limit=-1, write_error_log=False):
         self.opt = deepcopy(opt)
         self.g_logger = g_logger
 
-        if isinstance(self.opt, TrainOptions):
-            # We created this from a training script so we need to set some arguments
-            self.opt.serial_batches = True
-            self.opt.no_flip = True
-            self.opt.phase = 'test'
-            self.opt.style_sample_method = 'first'
-            self.opt.isTrain = False
-            self.opt.dataset_key = dataset_key
-        else:
-            # We need to setup
-            self.model = Pix2PixModel(self.opt)
+        self.opt.serial_batches = True
+        self.opt.no_flip = True
+        self.opt.phase = 'test'
+        self.opt.style_sample_method = 'first'
+        self.opt.isTrain = False
+        self.opt.dataset_key = dataset_key
 
         if 'write_error_log' not in self.opt:
             self.opt.write_error_log = write_error_log
@@ -64,7 +59,6 @@ class Tester:
             if not os.path.exists(self.results_dir):
                 os.makedirs(self.results_dir)
 
-
         self.limit = min(limit, self.N) if limit > 0 else self.N
 
         if self.is_validation and self.opt.write_error_log:
@@ -73,11 +67,6 @@ class Tester:
             error_log.create_dataset("user", shape=(self.N,), dtype='S4')
             error_log.create_dataset("filename", shape=(self.N,), dtype='S13')
             error_log.create_dataset("visualisation", shape=(self.N, 1, 380, 1000), dtype=np.uint8)
-
-        # parser.add_argument('--results_dir', type=str, default='results/', help='saves results here.')
-        # parser.add_argument('--which_epoch', type=str, default='latest', help='which epoch to load? set to latest to use latest cached model')
-        # parser.add_argument('--how_many', type=int, default=float("inf"), help='how many test images to run')
-        # parser.add_argument('--write_error_log', action='store_true', help='only for validation. write errors to file')
 
     def get_fake_and_resized(self, model, data_i):
         fake = model.forward(data_i, mode="inference").cpu()
@@ -201,8 +190,7 @@ class Tester:
                 f.write(os.linesep)
         print(f"Written {len(filepaths)} files. Filepath: {path_filepaths}")
 
-    def run(self, model=None):
-        model = model if model is not None else self.model
+    def run(self, model):
         print(f"Is validation: {self.is_validation}. Dataset_key: {self.opt.dataset_key}")
         if self.is_validation:
             self.run_full_validation(model)

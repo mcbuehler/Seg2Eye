@@ -43,11 +43,11 @@ iter_counter = IterationCounter(opt, len(dataloader))
 visualizer = Visualizer(opt)
 full_val_limit = -1
 
-opt.display_freq = 5
-opt.print_freq = 5
-opt.validation_limit = 5
-opt.full_val_freq = 2
-full_val_limit = 10
+# opt.display_freq = 5
+# opt.print_freq = 5
+# opt.validation_limit = 5
+opt.full_val_freq = 10
+# full_val_limit = 10
 
 tester_train = Tester(opt, g_logger, dataset_key='train', visualize=True, visualizer=visualizer, limit=full_val_limit, write_error_log=False)
 tester_validation = Tester(opt, g_logger, dataset_key='validation', visualize=True, visualizer=visualizer, limit=full_val_limit, write_error_log=False)
@@ -98,7 +98,7 @@ try:
                 print("Running full validation")
                 with torch.no_grad():
                     tester_train.run(model=trainer.pix2pix_model)
-
+                    tester_validation.run(model=trainer.pix2pix_model)
 
         trainer.update_learning_rate(epoch)
         iter_counter.record_epoch_end()
