@@ -86,11 +86,11 @@ try:
                     tester_train.run_partial_modes(model=trainer.pix2pix_model,
                                                    epoch=epoch,
                                                    n_steps=iter_counter.total_steps_so_far,
-                                                   log=True, visualize_images=opt.tf_log)
+                                                   log=True, visualize_images=opt.tf_log, limit=opt.validation_limit)
                     tester_validation.run_partial_modes(model=trainer.pix2pix_model,
                                                         epoch=epoch,
                                                         n_steps=iter_counter.total_steps_so_far,
-                                                        log=True, visualize_images=opt.tf_log)
+                                                        log=True, visualize_images=opt.tf_log, limit=opt.validation_limit)
 
             if iter_counter.needs_saving():
                 print('saving the latest model (epoch %d, total_steps %d)' %

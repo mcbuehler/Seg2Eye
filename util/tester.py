@@ -130,7 +130,8 @@ class Tester:
             counter += data_i['label'].shape[0]
             if counter > limit:
                 break
-            print(f"Processing batch {i}")
+            if i % 100 == 0:
+                print(f"Processing batch {i}")
             errors, fake, fake_resized, target_image = self.run_batch(data_i, model)
             all_errors += list(errors)
 
@@ -248,13 +249,14 @@ class Tester:
                 f.write(os.linesep)
         print(f"Written {len(filepaths)} files. Filepath: {path_filepaths}")
 
-    def run_partial_modes(self, model, epoch, n_steps, log, visualize_images):
+    def run_partial_modes(self, model, epoch, n_steps, log, visualize_images, limit):
         for mode in ['fix', 'rand']:
             self.run(model=model,
                      mode=mode,
                      epoch=epoch,
                      n_steps=n_steps,
-                     log=log)
+                     log=log,
+                     limit=limit)
             if visualize_images:
                 self.run_visual_validation(model, mode=mode, epoch=epoch,
                                                n_steps=n_steps,
