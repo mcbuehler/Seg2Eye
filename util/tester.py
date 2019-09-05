@@ -257,6 +257,7 @@ class Tester:
                                                n_steps=n_steps,
                                                limit=4)
 
+
 class MSECalculator:
     @classmethod
     def calculate_mse_for_images(cls, produced, target):
@@ -279,17 +280,6 @@ class MSECalculator:
         return mse_error
 
     @classmethod
-    def calculate_relative_sum_mse(cls, data):
-        fake = ImagePostprocessor.to_255resized_imagebatch(data['fake'], as_tensor=True)
-        real = ImagePostprocessor.as_batch(data["target_original"], as_tensor=True)
-
-        mse_error = cls.calculate_mse_for_images(fake, real)
-        relative_mse_error = mse_error * 1471
-        mu = torch.mean(relative_mse_error)
-        std = torch.std(relative_mse_error)
-        return mu, std, mse_error
-
-    @classmethod
     def calculate_error_statistics(cls, all_errors, mode, dataset_key):
         """
 
@@ -302,7 +292,8 @@ class MSECalculator:
         """
         all_errors_sum = np.sum(all_errors)
         relative_errors_sum = all_errors_sum / len(all_errors) * 1471
-        errors_dict = {f'mse/{dataset_key}/{mode}/sum': all_errors_sum,
+        errors_dict = {
+            # f'mse/{dataset_key}/{mode}/sum': all_errors_sum,
                        f'mse/{dataset_key}/{mode}/relative': relative_errors_sum}
         return errors_dict
 
