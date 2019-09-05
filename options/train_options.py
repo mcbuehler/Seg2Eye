@@ -15,7 +15,6 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--save_latest_freq', type=int, default=5000, help='frequency of saving the latest results')
         parser.add_argument('--save_epoch_freq', type=int, default=1, help='frequency of saving checkpoints at the end of epochs')
         parser.add_argument('--no_html', action='store_true', help='do not save intermediate training results to [opt.checkpoints_dir]/[opt.name]/web/')
-        parser.add_argument('--debug', action='store_true', help='only do one epoch and displays at each iteration')
         parser.add_argument('--tf_log', action='store_true', help='if specified, use tensorboard logging. Requires tensorflow installed')
         parser.add_argument('--validation_limit', type=int, default=500, help='Number of samples to use for calculating mse')
         parser.add_argument('--write_error_log', action='store_true', help='If you writes an error log for full validation runs')

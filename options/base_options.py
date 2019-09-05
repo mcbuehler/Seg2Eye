@@ -19,7 +19,7 @@ class BaseOptions():
 
     def initialize(self, parser):
         # experiment specifics
-        parser.add_argument('--name', type=str, default='label2coco', help='name of the experiment. It decides where to store samples and models')
+        parser.add_argument('--name', type=str, default='', help='name of the experiment. It decides where to store samples and models')
 
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         parser.add_argument('--use_apex', action='store_true', help='if true, use mixed-precision training via the apex library')
@@ -31,6 +31,7 @@ class BaseOptions():
         parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
         parser.add_argument('--spadeStyleGen', action='store_true', help='whether to input style at every layer as well.')
         parser.add_argument('--combine_mode', type=str, default='add', help='How to combine spade and style blocks', choices=('add', 'seq'))
+        parser.add_argument('--debug', action='store_true', help='only do one epoch and displays at each iteration')
 
         # input/output sizes
         parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
