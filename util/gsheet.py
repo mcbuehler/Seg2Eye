@@ -126,22 +126,37 @@ class GoogleSheetLogger:
                 for col, value in enumerate(header)
             ]
 
-        # Either update an existing row or append new row
         try:
-            row_index = [r[0] for r in current_values].index(identifier)
-            cells_to_update += [
-                gspread.models.Cell(row_index+1, col_index+1, value=value)
-                for col_index, value in enumerate(new_row)
-                if value is not None  # Don't remove existing values
-            ]
-
-        except ValueError:  # noqa
-            traceback.print_exc()
-            print("Gsheet: continuing by adding a new row...")
-            sheet.append_row(new_row)
+            # Either update an existing row or append new row
+            values = [r[0] for r in current_values]
+            if identifier in values:
+                row_index = [r[0] for r in current_values].index(identifier)
+                cells_to_update += [
+                    gspread.models.Cell(row_index+1, col_index+1, value=value)
+                    for col_index, value in enumerate(new_row)
+                    if value is not None  # Don't remove existing values
+                ]
+            else:
+                # We append a new row
+                print("Appending new row")
+                sheet.append_row(new_row)
         except:
             print("Unforeseen error")
             traceback.print_exc()
+        #
+        #
+        # try:
+        #     row_index = [r[0] for r in current_values].index(identifier)
+        #     cells_to_update += [
+        #         gspread.models.Cell(row_index+1, col_index+1, value=value)
+        #         for col_index, value in enumerate(new_row)
+        #         if value is not None  # Don't remove existing values
+        #     ]
+        #
+        # except ValueError:  # noqa
+        #     traceback.print_exc()
+        #     print("Gsheet: continuing by adding a new row...")
+        #     sheet.append_row(new_row)
 
         # Run all necessary update operations
         if len(cells_to_update) > 0:
