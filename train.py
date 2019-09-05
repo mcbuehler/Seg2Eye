@@ -3,25 +3,30 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 import os
-import shutil
 import sys
 import traceback
 
 import torch
 
-from options.train_options import TrainOptions
-import util.validation as validation
 import data
+from options.train_options import TrainOptions
+from trainers.pix2pix_trainer import Pix2PixTrainer
 from util.files import copy_src
-from util.tester import Tester
 from util.gsheet import GoogleSheetLogger
 from util.iter_counter import IterationCounter
+from util.tester import Tester
 from util.visualizer import Visualizer
-from trainers.pix2pix_trainer import Pix2PixTrainer
 
 # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # parse options
 opt = TrainOptions().parse()
+
+
+# opt.display_freq = 1
+# opt.print_freq = 1
+# opt.validation_limit = 1
+# opt.full_val_freq = 100
+# full_val_limit = 1
 
 copy_src(path_from='./', path_to=os.path.join(opt.checkpoints_dir, opt.name))
 
@@ -46,15 +51,8 @@ iter_counter = IterationCounter(opt, len(dataloader))
 # create tool for visualization
 visualizer = Visualizer(opt)
 
-# opt.display_freq = 5
-# opt.print_freq = 5
-# opt.validation_limit = 5
-# opt.full_val_freq = 10
-# full_val_limit = 10
-
 tester_train = Tester(opt, g_logger, dataset_key='train', visualizer=visualizer)
 tester_validation = Tester(opt, g_logger, dataset_key='validation', visualizer=visualizer)
-
 
 try:
     for epoch in iter_counter.training_epochs():

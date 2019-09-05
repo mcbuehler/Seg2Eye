@@ -45,6 +45,7 @@ class GoogleSheetLogger:
             traceback.print_exc()
             return
 
+
     def _get_worksheet(self):
         # Authenticate
         try:
@@ -133,11 +134,14 @@ class GoogleSheetLogger:
                 for col_index, value in enumerate(new_row)
                 if value is not None  # Don't remove existing values
             ]
-            # cells_to_update = cells_to_update[0] + [cells_to_update[-i] for i in range(len(cells_to_update)-1)]
-        except:  # noqa
+
+        except ValueError:  # noqa
             traceback.print_exc()
             print("Gsheet: continuing by adding a new row...")
             sheet.append_row(new_row)
+        except:
+            print("Unforeseen error")
+            traceback.print_exc()
 
         # Run all necessary update operations
         if len(cells_to_update) > 0:
