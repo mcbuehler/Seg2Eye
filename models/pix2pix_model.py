@@ -226,14 +226,14 @@ class Pix2PixModel(torch.nn.Module):
             raise ValueError(f"Aggregation method not found: {self.opt.style_aggr_method}")
 
     def _compute_multiple_netE(self, real_image):
-        outputs_netE = list()
         # We have several style images per input sample
-        for batch_i in range(real_image.shape[0]):
-            # now we have n style images that we treat as a batch for one sample
-            # mu will have shape (opt.input_ns, opt.dim_z)
-            mu, _ = self.netE(real_image[batch_i])
-            outputs_netE.append(mu)
-        outputs_netE_tensor = torch.stack(outputs_netE, dim=0)
+        # for batch_i in range(real_image.shape[0]):
+        #     # now we have n style images that we treat as a batch for one sample
+        #     # mu will have shape (opt.input_ns, opt.dim_z)
+        outputs_netE_tensor = torch.stack([self.netE(real_image[batch_i])[0]
+                                           for batch_i in range(real_image.shape[0])], dim=0)
+
+        # outputs_netE_tensor = torch.stack(outputs_netE, dim=0) for batch_i in range(real_image.shape[0])
         # batchSize, input_ns, z_dim if opt.use_z else w_dim
         if self.opt.use_z:
             assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.z_dim)
