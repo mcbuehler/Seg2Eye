@@ -10,7 +10,6 @@ python test.py --name $name --dataset_mode openeds \
 
 import os
 import re
-from collections import OrderedDict
 from copy import deepcopy
 
 import h5py
@@ -134,7 +133,6 @@ class Tester:
                 print(f"Processing batch {i}")
             errors, fake, fake_resized, target_image = self.run_batch(data_i, model)
             all_errors += list(errors)
-
             if write_error_log:
                 error_log = self._write_error_log_batch(error_log, data_i, i, fake, errors)
 
@@ -218,12 +216,14 @@ class Tester:
         self.visualizer.print_current_errors(epoch, total_steps_so_far, errors_dict, t=0)
         self.visualizer.plot_current_errors(errors_dict, total_steps_so_far)
 
-    def run_test(self, model):
+    def run_test(self, model, limit=-1):
         filepaths = list()
 
         for i, data_i in enumerate(self.dataloader):
-            if i * self.opt.batchSize >= self.limit:
+            if limit > 0 and i * self.opt.batchSize >= limit:
                 break
+            if i % 100 == 0:
+                print(f"Processing batch {i}")
 
             img_filename = data_i['filename']
             # The test file names are only 12 characters long, so we have dot to remove
@@ -232,6 +232,7 @@ class Tester:
             for b in range(len(img_filename)):
                 result_path = os.path.join(self.results_dir, img_filename[b] + ".npy")
                 fake, fake_resized = self.forward(model, data_i)
+
                 assert torch.min(fake_resized[b]) >= 0 and torch.max(fake_resized[b]) <= 255
                 np.save(result_path, np.copy(fake_resized[b]).astype(np.uint8))
                 filepaths.append(result_path)
@@ -296,6 +297,3 @@ class MSECalculator:
             # f'mse/{dataset_key}/{mode}/sum': all_errors_sum,
                        f'mse/{dataset_key}/{mode}/relative': relative_errors_sum}
         return errors_dict
-
-
-
