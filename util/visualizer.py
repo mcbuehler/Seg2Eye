@@ -77,7 +77,7 @@ class Visualizer():
     def plot_current_errors(self, errors, step):
         if self.tf_log:
             for tag, value in errors.items():
-                value = value.mean().float()
+                value = value.mean()
                 summary = self.tf.Summary(value=[self.tf.Summary.Value(tag=tag, simple_value=value)])
                 self.writer.add_summary(summary, step)
 
@@ -87,7 +87,7 @@ class Visualizer():
         for k, v in errors.items():
             #print(v)
             #if v != 0:
-            v = v.mean().float()
+            v = v.mean()
             message += '%s: %.3f ' % (k, v)
 
         print(message)
@@ -128,7 +128,7 @@ class Visualizer():
         webpage.add_images(ims, txts, links, width=self.win_size)
 
 
-def visualize_sidebyside(data, visualizer, epoch=-1, total_steps_so_far=-1, limit=-1, key_fake='fake', key_content='label', key_target='target_original', key_style='style_image', log_key='', log=True, w=200, h=320, error_list=None):
+def visualize_sidebyside(data, limit=-1, key_fake='fake', key_content='label', key_target='target_original', key_style='style_image', log_key='', w=200, h=320, error_list=None):
     # Validation results
     visuals_val = list()
 
@@ -163,6 +163,4 @@ def visualize_sidebyside(data, visualizer, epoch=-1, total_steps_so_far=-1, limi
             break
 
     visuals_val = OrderedDict(visuals_val)
-    if log:
-        visualizer.display_current_results(visuals_val, epoch, total_steps_so_far)
     return visuals_val

@@ -18,6 +18,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--debug', action='store_true', help='only do one epoch and displays at each iteration')
         parser.add_argument('--tf_log', action='store_true', help='if specified, use tensorboard logging. Requires tensorflow installed')
         parser.add_argument('--validation_limit', type=int, default=500, help='Number of samples to use for calculating mse')
+        parser.add_argument('--write_error_log', action='store_true', help='If you writes an error log for full validation runs')
         parser.add_argument('--full_val_freq', type=int, default=50000,
                             help='Frequency of a full validation run')
 

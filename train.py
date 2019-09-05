@@ -41,7 +41,6 @@ iter_counter = IterationCounter(opt, len(dataloader))
 
 # create tool for visualization
 visualizer = Visualizer(opt)
-full_val_limit = -1
 
 # opt.display_freq = 5
 # opt.print_freq = 5
@@ -49,8 +48,8 @@ full_val_limit = -1
 # opt.full_val_freq = 10
 # full_val_limit = 10
 
-tester_train = Tester(opt, g_logger, dataset_key='train', visualize=True, visualizer=visualizer, limit=full_val_limit, write_error_log=False)
-tester_validation = Tester(opt, g_logger, dataset_key='validation', visualize=True, visualizer=visualizer, limit=full_val_limit, write_error_log=False)
+tester_train = Tester(opt, g_logger, dataset_key='train', visualizer=visualizer)
+tester_validation = Tester(opt, g_logger, dataset_key='validation', visualizer=visualizer)
 
 try:
     for epoch in iter_counter.training_epochs():
@@ -78,15 +77,15 @@ try:
 
             if iter_counter.needs_displaying():
                 with torch.no_grad():
-                    # Log some stuff for training
-                    Tester.run_partial_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
-                                              limit=opt.validation_limit, log_key='train/rand', g_logger=g_logger)
-                    Tester.run_partial_validation(dataloader, trainer.pix2pix_model, visualizer, epoch, iter_counter,
-                                              limit=opt.validation_limit, log_key='train/fix', g_logger=g_logger)
-
-                    # Output VALIDATION images
-                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/rand', g_logger=g_logger)
-                    validation.run_validation(dataloader_val, trainer.pix2pix_model, visualizer, epoch, iter_counter, limit=opt.validation_limit, log_key='val/fix', g_logger=g_logger)
+                    # Run and log outputs
+                    tester_train.run_partial_modes(model=trainer.pix2pix_model,
+                                                   epoch=epoch,
+                                                   n_steps=iter_counter.total_steps_so_far,
+                                                   log=True, visualize_images=opt.tf_log)
+                    tester_validation.run_partial_modes(model=trainer.pix2pix_model,
+                                                        epoch=epoch,
+                                                        n_steps=iter_counter.total_steps_so_far,
+                                                        log=True, visualize_images=opt.tf_log)
 
             if iter_counter.needs_saving():
                 print('saving the latest model (epoch %d, total_steps %d)' %
@@ -95,10 +94,11 @@ try:
                 iter_counter.record_current_iter()
 
             if iter_counter.needs_full_validation():
-                print("Running full validation")
                 with torch.no_grad():
-                    tester_train.run(model=trainer.pix2pix_model)
-                    tester_validation.run(model=trainer.pix2pix_model)
+                    tester_train.run(trainer.pix2pix_model, mode='full', epoch=epoch, n_steps=iter_counter.total_steps_so_far,
+                                     log=True, write_error_log=opt.write_error_log)
+                    tester_validation.run(trainer.pix2pix_model, mode='full', epoch=epoch, n_steps=iter_counter.total_steps_so_far,
+                                          log=True, write_error_log=opt.write_error_log)
 
         trainer.update_learning_rate(epoch)
         iter_counter.record_epoch_end()
