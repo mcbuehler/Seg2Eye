@@ -33,6 +33,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate for adam')
         parser.add_argument('--D_steps_per_G', type=int, default=1, help='number of discriminator iterations per generator iterations.')
         parser.add_argument('--weight_decay', type=float, default=0.0, help='weight_decay for adam')
+        parser.add_argument('--use_radam', action='store_true', help='Use Radam instead of Adam')
 
         # for discriminators
         parser.add_argument('--ndf', type=int, default=64, help='# of discrim filters in first conv layer')
