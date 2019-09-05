@@ -150,12 +150,6 @@ class Tester:
             print(f"  {k}, {errors_dict[k]:.2f}")
         print(f"  dataset_key: {self.opt.dataset_key}, model: {self.opt.name}, epoch: {epoch}, n_steps: {n_steps}")
 
-    def run_full_validation(self, model):
-        generator = self.get_iterator(self.dataloader)
-        all_errors = self.run_validation(model, generator, limit=-1)
-        errors_dict = MSECalculator.calculate_error_statistics(all_errors, mode='full', dataset_key=self.opt.dataset_key)
-        self.log_gsheet(errors_dict)
-
     def run_visual_validation(self, model, mode, epoch, n_steps, limit):
         print(f"Visualizing images for mode '{mode}'...")
         indices = self._get_validation_indices(mode, limit)
@@ -199,13 +193,14 @@ class Tester:
 
         errors_dict = MSECalculator.calculate_error_statistics(all_errors, mode=mode, dataset_key=self.opt.dataset_key)
         self.print_results(all_errors, errors_dict, epoch, n_steps)
-        self.log_gsheet(errors_dict)
+        self.log_gsheet(errors_dict, epoch, n_steps)
 
         if log:
             self.log_visualizer(errors_dict, epoch, n_steps)
 
-    def log_gsheet(self, errors_dict):
+    def log_gsheet(self, errors_dict, epoch, n_steps):
         if not self.opt.debug and self.g_logger is not None:
+            errors_dict = {**errors_dict, 'epoch': epoch, 'n_steps': n_steps}
             self.g_logger.update_or_append_row(errors_dict)
 
     def log_visualizer(self, errors_dict, epoch, total_steps_so_far):

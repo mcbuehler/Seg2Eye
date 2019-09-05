@@ -135,6 +135,8 @@ class GoogleSheetLogger:
             ]
             # cells_to_update = cells_to_update[0] + [cells_to_update[-i] for i in range(len(cells_to_update)-1)]
         except:  # noqa
+            traceback.print_exc()
+            print("Gsheet: continuing by adding a new row...")
             sheet.append_row(new_row)
 
         # Run all necessary update operations
