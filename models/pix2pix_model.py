@@ -233,7 +233,6 @@ class Pix2PixModel(torch.nn.Module):
         outputs_netE_tensor = torch.stack([self.netE(real_image[batch_i])[0]
                                            for batch_i in range(real_image.shape[0])], dim=0)
 
-        # outputs_netE_tensor = torch.stack(outputs_netE, dim=0) for batch_i in range(real_image.shape[0])
         # batchSize, input_ns, z_dim if opt.use_z else w_dim
         if self.opt.use_z:
             assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.z_dim)
