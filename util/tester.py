@@ -222,17 +222,16 @@ class Tester:
         for i, data_i in enumerate(self.dataloader):
             if limit > 0 and i * self.opt.batchSize >= limit:
                 break
-            if i % 100 == 0:
-                print(f"Processing batch {i}")
+            if i % 10 == 0:
+                print(f"Processing batch {i} (processed {self.opt.batchSize * i} images)")
 
-            img_filename = data_i['filename']
             # The test file names are only 12 characters long, so we have dot to remove
-            img_filename = [re.sub(r'\.', '', f) for f in img_filename]
+            img_filename = [re.sub(r'\.', '', f) for f in data_i['filename']]
+
+            fake, fake_resized = self.forward(model, data_i)
             # We are testing
             for b in range(len(img_filename)):
                 result_path = os.path.join(self.results_dir, img_filename[b] + ".npy")
-                fake, fake_resized = self.forward(model, data_i)
-
                 assert torch.min(fake_resized[b]) >= 0 and torch.max(fake_resized[b]) <= 255
                 np.save(result_path, np.copy(fake_resized[b]).astype(np.uint8))
                 filepaths.append(result_path)
