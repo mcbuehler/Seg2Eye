@@ -38,7 +38,6 @@ class Tester:
         self.opt.serial_batches = True
         self.opt.no_flip = True
         self.opt.phase = 'test'
-        self.opt.style_sample_method = 'first'
         self.opt.isTrain = False
         self.opt.dataset_key = dataset_key
 
@@ -63,7 +62,7 @@ class Tester:
             os.makedirs(self.results_dir)
 
     def forward(self, model, data_i):
-        fake = model.forward(data_i, mode="inference").cpu()
+        fake = model.forward(data_i, mode="inference").detach().cpu()
         fake_resized = ImagePostprocessor.to_255resized_imagebatch(fake, as_tensor=True)
         return fake, fake_resized
 
@@ -129,7 +128,7 @@ class Tester:
             counter += data_i['label'].shape[0]
             if counter > limit:
                 break
-            if i % 100 == 0:
+            if i % 10 == 0:
                 print(f"Processing batch {i}")
             errors, fake, fake_resized, target_image = self.run_batch(data_i, model)
             all_errors += list(errors)
