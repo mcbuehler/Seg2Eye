@@ -15,3 +15,6 @@ models/networks/sync_batchnorm/
 util/find_by_filename.py
 scripts/create_json_regen.py
 config
+checkpoints_pupil/
+*
+.sh
