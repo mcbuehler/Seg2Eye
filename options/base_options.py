@@ -44,7 +44,7 @@ class BaseOptions():
         parser.add_argument('--output_nc', type=int, default=1, help='# of output image channels')
         parser.add_argument('--input_ns', type=int, default=1, help='Number of style inputs')
         parser.add_argument('--style_aggr_method', type=str, default='mean', help='Style aggregation method', choices=('mean', 'max'))
-        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first'))
+        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first', 'ref_first', 'ref_random40'))
         parser.add_argument('--style_aggr_space', type=str, default='w', help='Where to aggregate multiple style images', choices=('z', 'w'))
         parser.add_argument('--use_z', action='store_true', help='Whether to use a z space or directly collapse to w')
         # parser.add_argument('--output_wh', type=int, nargs='+', default=(400, 640), help='width and height of output image')
@@ -57,6 +57,10 @@ class BaseOptions():
         parser.add_argument('--no_flip', action='store_true', help='if specified, do not flip the images for data argumentation')
         parser.add_argument('--nThreads', default=0, type=int, help='# threads for loading data')
         parser.add_argument('--load_from_opt_file', action='store_true', help='load the options from checkpoints and use that as default')
+        parser.add_argument('--style_ref', type=str, default='datasets/style_images.h5',
+                            help='h5 file with references to style images that should be selected for each person. The file should have the following structure:'
+                                 '[dataset_key][filename]{idx: [1,2,3,...], filename: [000012,...]}')
+
 
         # for generator
         parser.add_argument('--netG', type=str, default='spadestyle', help='selects model to use for netG (pix2pixhd | spade | spadestyle)')

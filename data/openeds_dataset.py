@@ -3,6 +3,7 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 import json
+import re
 
 import h5py
 import numpy as np
@@ -13,6 +14,9 @@ from data.base_dataset import BaseDataset, get_params, get_transform, flip
 
 
 class OpenEDSDataset(BaseDataset):
+    style_image_refs = None
+    h5_in_file = None
+
     def __init__(self):
         super().__init__()
 
@@ -20,6 +24,10 @@ class OpenEDSDataset(BaseDataset):
         if self.h5_in_file is None:
             self.h5_in_file = h5py.File(self.root, 'r')  # , libver='latest')
             self.h5_in = self.h5_in_file[self.dataset_key]
+
+        if 'ref' in self.opt.style_sample_method and self.style_image_refs is None:
+            assert self.opt.style_ref != '', "You need to provide a h5 file for style references."
+            self.style_image_refs = h5py.File(self.opt.style_ref, 'r')
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -29,6 +37,7 @@ class OpenEDSDataset(BaseDataset):
 
     def initialize(self, opt):  #TODO: print style sampling method
         self.opt = opt
+        print(f"Style sampling method: {self.opt.style_sample_method}")
 
         self.root = opt.dataroot
         self.dataset_key = opt.dataset_key
@@ -37,7 +46,6 @@ class OpenEDSDataset(BaseDataset):
         self.label_key = "labels_ss" if self.dataset_key != "test" else "labels_gen"
         self.key_filenames = "labels_gen_filenames" if self.dataset_key == "test" else "images_ss_filenames"
 
-        self.h5_in_file = None
         self._setup_data_file()
 
         self.user_ids = list(self.h5_in.keys())
@@ -55,11 +63,6 @@ class OpenEDSDataset(BaseDataset):
                     self.N += self.h5_in[user][key].shape[0]
         self.h5_in_file.close()
         self.h5_in_file = None
-
-        if 'from_json' in self.opt.style_sample_method:
-            assert opt.style_images_json != ''
-            with open(opt.style_images_json, 'r') as f:
-                self.style_images_json = json.load(f)
 
     def _get_tuple_identifier_from_index(self, index):
         idx_user = 0
@@ -89,7 +92,6 @@ class OpenEDSDataset(BaseDataset):
         filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
         # Get input_ns style images (already preprocessed to tensor)
         style_image_tensor = self.get_style_images(user, self.opt.input_ns, filename)
-
 
         if torch.max(mask_tensor) > 3:
             print(user, idx_target_image, filename)
@@ -144,10 +146,17 @@ class OpenEDSDataset(BaseDataset):
             indices = np.random.choice(list(range(n_images)), n)
         elif self.opt.style_sample_method == 'first':
             indices = list(range(min(n, n_images)))
-        elif 'from_json' in self.opt.style_sample_method:
-            all_indices = self.style_images_json[self.opt.dataset_key][user_id][filename]['index']
+        elif 'ref' in self.opt.style_sample_method:
+            all_indices = self.style_image_refs[self.opt.dataset_key][user_id][filename]['index']
             if 'random' in self.opt.style_sample_method:
-                indices = np.random.choice(all_indices, n)
+                reduced_n = re.sub(r"[^\d]", "", self.opt.style_sample_method)
+                # e.g. 0.3 for taking the nearest 40%
+                if reduced_n:
+                    reduced_n = int(reduced_n)
+                else:
+                    reduced_n = 40
+                reduced_indices = all_indices[:reduced_n]
+                indices = np.random.choice(reduced_indices, n)
             else:
                 # Best first
                 indices = all_indices[:n]
@@ -188,10 +197,3 @@ class OpenEDSDataset(BaseDataset):
             self.h5_in_file.close()
             self.h5_in_file = None
             self.h5_in = None
-
-# for dataset_key in f:
-#     data = f[dataset_key]
-#     print("n users: ", len(data.keys()))
-#     for user in data:
-#         for key in data[user]:
-#             print(data[user][key].shape)
