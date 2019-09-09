@@ -11,6 +11,7 @@ from models.networks.loss import *
 # from models.networks.generator import *
 # from models.networks.encoder import *
 # import util.util as util
+from models.networks.pupil_locator import PupilLocator
 from util import util
 
 
@@ -65,3 +66,8 @@ def define_E(opt):
     # there exists only one encoder type
     netE_cls = find_network_using_name('conv', 'encoder')
     return create_network(netE_cls, opt)
+
+
+def define_pupil_locator(opt):
+    cls = PupilLocator
+    return create_network(cls, opt)
