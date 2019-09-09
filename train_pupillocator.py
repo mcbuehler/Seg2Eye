@@ -17,6 +17,7 @@ from util import util
 from util.files import copy_src
 from util.iter_counter import IterationCounter
 from util.visualizer import Visualizer
+from util.visualizer import annotate_pupil
 
 # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # parse options
@@ -58,26 +59,6 @@ iter_counter = IterationCounter(opt, len(dataloader))
 
 # create tool for visualization
 visualizer = Visualizer(opt)
-
-
-def annotate_pupil(tensor, pupil_location, col=(0, 255, 0), offset=10):
-    annotated_tensor = list()
-    pupil_location[:,0] = (pupil_location[:, 0] + 0.5) * tensor.shape[-2]
-    pupil_location[:,1] = (pupil_location[:, 1] + 0.5) * tensor.shape[-1]
-    pupil_location = pupil_location.int()
-    for i, t in enumerate(tensor):
-        t = torch.cat([t,t,t], dim=0)
-        loc_x = pupil_location[i][0]
-        loc_x = [max(0, loc_x - offset), min(tensor.shape[-2], loc_x + offset)]
-        loc_y = pupil_location[i][1]
-        loc_y = [max(0, loc_y - offset), min(tensor.shape[-1], loc_y + offset)]
-
-        for x in range(loc_x[0], loc_x[1]):
-            for y in range(loc_y[0], loc_y[1]):
-                for c in range(len(col)):
-                    t[c, x, y] = col[c]
-        annotated_tensor.append(t)
-    return torch.stack(annotated_tensor)
 
 
 try:
