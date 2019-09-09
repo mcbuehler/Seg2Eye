@@ -123,9 +123,10 @@ class PupilLocator(BaseNetwork):
             mask = mask.cuda()
         return mask
 
-    def get_pupil_location(self, mask_in):
+    @classmethod
+    def get_pupil_location(cls, mask_in):
         if len(mask_in.shape) == 4:
-            locations = [self.get_pupil_location(m[0]) for m in mask_in]
+            locations = [cls.get_pupil_location(m[0]) for m in mask_in]
             return torch.stack(locations)
         else:
             # absolute location
@@ -133,7 +134,7 @@ class PupilLocator(BaseNetwork):
                 mask = mask_in[0]
             else:
                 mask = mask_in
-            pupil_mask = mask == self.VAL_PUPIL
+            pupil_mask = mask == cls.VAL_PUPIL
             location = torch.nonzero(pupil_mask).float()
             x = (torch.mean(location[:, 0]) / mask.shape[-2]) - 0.5
             y = (torch.mean(location[:, 1]) / mask.shape[-1]) - 0.5
