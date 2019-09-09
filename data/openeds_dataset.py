@@ -2,6 +2,8 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
+import json
+
 import h5py
 import numpy as np
 import torch
@@ -51,32 +53,14 @@ class OpenEDSDataset(BaseDataset):
             for key in keys:
                 if key in self.h5_in[user]:
                     self.N += self.h5_in[user][key].shape[0]
-        #
-        # assert len(list(self.h5_in.keys())) > 0
-        # # e.g. {'p01': 2500, ...}
-        # self.N_person_ids = {group: self.h5_in[group]["image"].shape[0] for group in self.h5_in}
-        # # e.g. ['p01', 'p02',...]
-        # self.person_ids = [group for group in self.h5_in.keys()]
-        # # e.g. [0, 2500, 7033,...]
-        # self.person_startindex = [0]
-        # for person_id in self.h5_in:
-        #     self.person_startindex += [self.person_startindex[-1] + self.N_person_ids[person_id]]
-        # self.N = np.sum(list(self.N_person_ids.values()))
-        #
         self.h5_in_file.close()
         self.h5_in_file = None
 
-    # def get_paths(self, opt):
-    #     label_paths = []
-    #     image_paths = []
-    #     instance_paths = []
-    #     assert False, "A subclass of Pix2pixDataset must override self.get_paths(self, opt)"
-    #     return label_paths, image_paths, instance_paths
+        if 'from_json' in self.opt.style_sample_method:
+            assert opt.style_images_json != ''
+            with open(opt.style_images_json, 'r') as f:
+                self.style_images_json = json.load(f)
 
-    # def paths_match(self, path1, path2):
-    #     filename1_without_ext = os.path.splitext(os.path.basename(path1))[0]
-    #     filename2_without_ext = os.path.splitext(os.path.basename(path2))[0]
-    #     return filename1_without_ext == filename2_without_ext
     def _get_tuple_identifier_from_index(self, index):
         idx_user = 0
         for i in range(len(self.user_ids)):
@@ -102,10 +86,10 @@ class OpenEDSDataset(BaseDataset):
         # the toTensor method in transform will convert uint8 [0, 255] to foat [-1, 1], so we need to revert this.
         mask_tensor = transform_mask(mask) * 255.0
 
-        # Get input_ns style images (already preprocessed to tensor)
-        style_image_tensor = self.get_style_images(user, self.opt.input_ns)
-
         filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
+        # Get input_ns style images (already preprocessed to tensor)
+        style_image_tensor = self.get_style_images(user, self.opt.input_ns, filename)
+
 
         if torch.max(mask_tensor) > 3:
             print(user, idx_target_image, filename)
@@ -155,23 +139,30 @@ class OpenEDSDataset(BaseDataset):
         indices = np.random.choice(list(range(self.N)), n)
         return indices
 
-    def _sample_style_idx(self, n_images, n):
+    def _sample_style_idx(self, n_images, n, user_id=None, filename=None):
         if self.opt.style_sample_method == 'random':
             indices = np.random.choice(list(range(n_images)), n)
         elif self.opt.style_sample_method == 'first':
             indices = list(range(min(n, n_images)))
+        elif 'from_json' in self.opt.style_sample_method:
+            all_indices = self.style_images_json[self.opt.dataset_key][user_id][filename]['index']
+            if 'random' in self.opt.style_sample_method:
+                indices = np.random.choice(all_indices, n)
+            else:
+                # Best first
+                indices = all_indices[:n]
         else:
             raise ValueError(f"Invalid style sampling method: {self.opt.style_sample_method}")
         return indices
 
-    def get_style_images(self, user_id, n):
+    def get_style_images(self, user_id, n, filename=None):
         # user_idx = self.user_ids.index(user_id)
         # n_user = self.N_start[user_idx + 1] - self.N_start[user_idx]
         # within_idx = np.random.choice(list(range(n_user)), size=n)
         # selected_idx = [self.N_start[user_idx] + i for i in within_idx]
         # return selected_idx
         n_images = self.h5_in[user_id][self.key_style_images].shape[0]
-        selected_idx = self._sample_style_idx(n_images, n)
+        selected_idx = self._sample_style_idx(n_images, n, user_id=user_id, filename=filename)
 
         style_images = [self.h5_in[user_id][self.key_style_images][i] for i in selected_idx]
 
@@ -179,7 +170,7 @@ class OpenEDSDataset(BaseDataset):
         size = style_images[0].shape[-2:]
         # Convert to tensor
         params = get_params(self.opt, size)  # Only give h and w
-        transform_image =  get_transform(self.opt, params)
+        transform_image = get_transform(self.opt, params)
         tensors = [transform_image(img) for img in style_images]
         style_image_tensor = torch.stack(tensors)
         return style_image_tensor
