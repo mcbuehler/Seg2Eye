@@ -159,7 +159,7 @@ class OpenEDSDataset(BaseDataset):
         if self.opt.style_sample_method == 'random':
             indices = np.random.choice(list(range(n_images)), n)
         elif self.opt.style_sample_method == 'first':
-            indices = list(range(min(n,n_images)))
+            indices = list(range(min(n, n_images)))
         else:
             raise ValueError(f"Invalid style sampling method: {self.opt.style_sample_method}")
         return indices

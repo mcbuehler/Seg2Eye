@@ -56,11 +56,11 @@ def create_dataloader(opt):
     return dataloader
 
 
-def create_inference_dataloader(opt, dataset_key='validation'):
+def create_inference_dataloader(opt, dataset_key='validation', shuffle=False):
     # We copy and modify opt and use our existing function to create a dataloader
     opt = deepcopy(opt)
     opt.dataset_key = dataset_key
-    opt.serial_batches = True
+    opt.serial_batches = not shuffle
     opt.isTrain = False
     opt.style_sample_method = 'first'
     return create_dataloader(opt)

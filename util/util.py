@@ -12,6 +12,7 @@ from PIL import Image
 import os
 import argparse
 import dill as pickle
+from torch.nn import DataParallel
 
 
 def save_obj(obj, name):
@@ -204,7 +205,12 @@ def load_network(net, label, epoch, opt):
     save_dir = os.path.join(opt.checkpoints_dir, opt.name)
     save_path = os.path.join(save_dir, save_filename)
     weights = torch.load(save_path)
+    if isinstance(net, DataParallel):
+        weights = {f"module.{key}": value for key, value in weights.items()}
     net.load_state_dict(weights)
+
+    if len(opt.gpu_ids) and torch.cuda.is_available():
+        net.cuda()
     print(f"Loaded network from {save_path} for epoch {epoch}")
     return net
 
