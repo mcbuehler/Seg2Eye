@@ -124,6 +124,8 @@ class KLDLoss(nn.Module):
 
 
 def openEDSaccuracy(input, target):
+    input = input.int()
+    target = target.int()
     diff = input - target
     squared_diff = torch.mul(diff, diff)
     h, w = squared_diff.shape[-2:]
