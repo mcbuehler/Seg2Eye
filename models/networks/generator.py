@@ -123,7 +123,7 @@ class SPADEGenerator(BaseNetwork):
 class SPADESTYLEGenerator(BaseNetwork):
     @staticmethod
     def modify_commandline_options(parser, is_train):
-        parser.set_defaults(norm_G='spectralspadesyncbatch3x3')
+        # parser.set_defaults(norm_G='spectralspadesyncbatch3x3')  # TODO: find out if 'spectralspadeinstance3x3' words better
         parser.add_argument('--num_upsampling_layers',
                             choices=('normal', 'more', 'most'), default='normal',
                             help="If 'more', adds upsampling layer between the two middle resnet blocks. If 'most', also add one more upsampling + resnet layer at the end of the generator")

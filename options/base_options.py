@@ -25,7 +25,7 @@ class BaseOptions():
         parser.add_argument('--use_apex', action='store_true', help='if true, use mixed-precision training via the apex library')
         parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
         parser.add_argument('--model', type=str, default='pix2pix', help='which model to use')
-        parser.add_argument('--norm_G', type=str, default='spectralinstance', help='instance normalization or batch normalization')
+        parser.add_argument('--norm_G', type=str, default='spectralspadesyncbatch3x3', help='instance normalization or batch normalization')
         parser.add_argument('--norm_D', type=str, default='spectralinstance', help='instance normalization or batch normalization')
         parser.add_argument('--norm_E', type=str, default='spectralinstance', help='instance normalization or batch normalization')
         parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
