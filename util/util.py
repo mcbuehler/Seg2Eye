@@ -206,7 +206,11 @@ def load_network(net, label, epoch, opt):
     save_path = os.path.join(save_dir, save_filename)
     weights = torch.load(save_path)
     if isinstance(net, DataParallel):
-        weights = {f"module.{key}": value for key, value in weights.items()}
+        one_key = "".join(list(weights.keys()))
+        # Hacky way of seeing whether weights were saved under module.X or X.
+        if not 'module' in one_key:
+            # We have to add the module prefix
+            weights = {f"module.{key}": value for key, value in weights.items()}
     net.load_state_dict(weights)
 
     if len(opt.gpu_ids) and torch.cuda.is_available():
@@ -269,4 +273,15 @@ def print_tensor_stats(tensor):
     print(f"dim: {tensor.shape}")
     print(f"min / max: {torch.min(tensor)} / {torch.max(tensor)}")
     print(f"mean: {torch.mean(tensor.float())}")
+
+
+def print_h5_tree(group, prefix='', limit=-1):
+    if hasattr(group, 'keys'):
+        keys = list(group.keys())
+        for i, key in enumerate(keys):
+            print(f"{prefix}{key}")
+            print_h5_tree(group[key], prefix=prefix+'--', limit=1)
+            if i >= limit > 0:
+                break
+
 
