@@ -151,7 +151,7 @@ def visualize_sidebyside(data, limit=-1, key_fake='fake', key_content='label', k
         cat_val = torch.cat((style[i], content[i], target[i], fake[i], error_heatmap[i]), dim=-1)
 
         # # 4th component: text annotation with metadata
-        text = f'{data["user"][i]} / {data["filename"][0]}'
+        text = f'{data["user"][i]} / {data["filename"][i]}'
         if error_list is not None:
             err = error_list[i] * 1471
             text += f' (err: {err:.2f})'
