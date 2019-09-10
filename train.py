@@ -25,7 +25,7 @@ opt = TrainOptions().parse()
 # opt.display_freq = 1
 # opt.print_freq = 1
 # opt.validation_limit = 1
-# opt.full_val_freq = 100
+# opt.full_val_freq = 10
 # full_val_limit = 1
 
 copy_src(path_from='./', path_to=os.path.join(opt.checkpoints_dir, opt.name))
