@@ -6,11 +6,11 @@ import numpy as np
 from data.postprocessor import ImagePostprocessor
 
 
-def get_text_image(text, dim=(100, 30)):
+def get_text_image(text, dim=(100, 30), fontscale=1):
     img = np.zeros(dim, np.uint8)
     font                   = cv2.FONT_HERSHEY_SIMPLEX
     bottomLeftCornerOfText = (10, dim[0] - 10)  # x, y
-    fontScale              = 1
+    fontScale              = fontscale
     fontColor              = (255,255,255)
     lineType               = 2
 
