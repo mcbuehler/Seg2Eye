@@ -1,7 +1,8 @@
 """
-
+export name=190910_size256_bs1_lr.0002_l1_0_l2_15_w32___spadeStyleGen_cmadd_ns7_SAMmax_wc0_SSMref_random40
+export DK=validation
 bsub -n 1 -W 4:00 -o "lsf_"$DK"_""$name" -R "rusage[mem=32048, ngpus_excl_p=1]" -R "select[gpu_mtotal0>=10240]" \
-python test.py --dataroot $DR --name $name --dataset_key $DK --batchSize 12 --load_from_opt_file --write_error_log
+python test.py --dataroot $DR --name $name --dataset_key $DK --batchSize 1 --load_from_opt_file
 
 """
 
