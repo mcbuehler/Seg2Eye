@@ -280,8 +280,10 @@ def print_h5_tree(group, prefix='', limit=-1):
         keys = list(group.keys())
         for i, key in enumerate(keys):
             print(f"{prefix}{key}")
-            print_h5_tree(group[key], prefix=prefix+'--', limit=1)
+            print_h5_tree(group[key], prefix=prefix+'--', limit=-1)
             if i >= limit > 0:
                 break
+    else:
+        print(f"{prefix}{group.shape}")
 
 
