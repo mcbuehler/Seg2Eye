@@ -244,7 +244,8 @@ class Tester:
         print(f"Written {len(filepaths)} files. Filepath: {path_filepaths}")
 
     def run_partial_modes(self, model, epoch, n_steps, log, visualize_images, limit):
-        for mode in ['fix', 'rand']:
+        # for mode in ['fix', 'rand']:
+        for mode in ['rand']:
             self.run(model=model,
                      mode=mode,
                      epoch=epoch,
