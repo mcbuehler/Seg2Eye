@@ -65,7 +65,11 @@ def copy_src(path_from, path_to):
     for f in to_save:
         copy(f, os.path.join(tmp_folder, f), overwrite=True)
     shutil.make_archive(tmp_folder, 'zip', tmp_folder)
-    shutil.rmtree(tmp_folder)
+    try:
+        shutil.rmtree(tmp_folder)
+    except FileNotFoundError:
+        # We got a FileNotfound error on the cluster. Maybe some race conditions?
+        pass
     print(f"Copied {len(to_save)} files and folders from {path_from} to {path_to}")
 
 
