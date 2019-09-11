@@ -39,14 +39,25 @@ class Pix2PixModel(torch.nn.Module):
                 self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
             if opt.use_vae:
                 self.KLDLoss = networks.KLDLoss()
+            if opt.lambda_style_feat > 0:
+                # loss on style feature maps
+                self.criterion_style_feat = nn.MSELoss()
+            if opt.lambda_style_w > 0:
+                # Loss on latent style code
+                self.criterion_style_w = nn.MSELoss()
             self.reset_loss_log()
 
     def get_loss_log(self):
         loss_log = {key: torch.mean(torch.stack(self.loss_log[key])) for key in self.loss_log if len(self.loss_log[key])}
         return loss_log
 
+    def add_to_loss_log(self, key, value):
+        if not key in self.loss_log:
+            self.loss_log[key] = list()
+        self.loss_log[key].append(value)
+
     def reset_loss_log(self):
-        self.loss_log = {"L1/raw": list(), "L2/raw": list(), "KLD/raw": list(), "train/mse": list()}
+        self.loss_log = {}
 
     # Entry point for all calls involving forward pass
     # of deep networks. We used this approach since DataParallel module
@@ -68,7 +79,7 @@ class Pix2PixModel(torch.nn.Module):
             return mu, logvar
         elif mode == 'inference':
             with torch.no_grad():
-                fake_image, _ = self.generate_fake(input_semantics, style_image)
+                fake_image, _, _ = self.generate_fake(input_semantics, style_image)
                 # We don't want to track our losses here as it could confound with training losses
                 self.reset_loss_log()
             return fake_image
@@ -154,7 +165,7 @@ class Pix2PixModel(torch.nn.Module):
     def compute_generator_loss(self, input_semantics, style_image, target_image):
         G_losses = {}
 
-        fake_image, KLD_loss = self.generate_fake(
+        fake_image, KLD_loss, latent_style_real = self.generate_fake(
             input_semantics, style_image, compute_kld_loss=self.opt.use_vae)
 
         if self.opt.use_vae:
@@ -169,12 +180,23 @@ class Pix2PixModel(torch.nn.Module):
             l2_loss = self.criterionL2(fake_image, target_image)
             G_losses['L2/weighted'] = l2_loss * self.opt.lambda_l2
             # Only for logging
-            self.loss_log['L2/raw'].append(l2_loss)
+            self.add_to_loss_log('L2/raw', l2_loss)
         if self.opt.lambda_l1:
             l1_loss = self.criterionL2(fake_image, target_image)
             G_losses['L1/weighted'] = l1_loss * self.opt.lambda_l1
             # Only for logging
-            self.loss_log['L1/raw'].append(l1_loss)
+            self.add_to_loss_log('L1/raw', l1_loss)
+        if self.opt.lambda_style_feat:
+            pass
+            # TODO: implement
+            #style_feat_loss = self.criterion_style_feat
+        if self.opt.lambda_style_w and self.opt.spadeStyleGen:
+            # We need to expand the produced image to simulate several style images
+            # It is important to detach the fake latent style, otherwise we learn the wrong thing.
+            latent_style_fake = self.encode_w(fake_image.unsqueeze(1)).detach()
+            style_w_loss_raw = self.criterion_style_w(latent_style_fake, latent_style_real)
+            G_losses['style_w/weighted'] = style_w_loss_raw * self.opt.lambda_style_w
+            self.add_to_loss_log('style_w/raw', style_w_loss_raw)
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
@@ -197,7 +219,7 @@ class Pix2PixModel(torch.nn.Module):
     def compute_discriminator_loss(self, input_semantics, real_image, target_image):
         D_losses = {}
         with torch.no_grad():
-            fake_image, _ = self.generate_fake(input_semantics, real_image)
+            fake_image, _, _ = self.generate_fake(input_semantics, real_image)
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
 
@@ -272,11 +294,7 @@ class Pix2PixModel(torch.nn.Module):
                 # This is the way we should be taking if we do not use a z space
                 w = self._compute_aggregated_w(real_image)
         else:
-            # netE outputs a mu of dim opt.z_dim
-            # This is legacy code for backward compatibility
-            # and not used any more in more recent experiments (3.9.19 and newer)
-            z, _ = self.netE(real_image)
-            w = self.netE(z, mode='downscale')
+            raise ValueError("real_image should have 5 dimensions")
         return w
 
     def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):
@@ -288,7 +306,7 @@ class Pix2PixModel(torch.nn.Module):
             if compute_kld_loss:
                 kld_loss_raw = self.KLDLoss(mu, logvar)
                 KLD_loss = kld_loss_raw * self.opt.lambda_kld
-                self.loss_log['KLD/raw'].append(kld_loss_raw)
+                self.add_to_loss_log('KLD/raw', kld_loss_raw)
 
         if self.opt.spadeStyleGen:
             latent_style = self.encode_w(style_image)
@@ -298,7 +316,7 @@ class Pix2PixModel(torch.nn.Module):
         assert (not compute_kld_loss) or self.opt.use_vae, \
             "You cannot compute KLD loss if opt.use_vae == False"
 
-        return fake_image, KLD_loss
+        return fake_image, KLD_loss, latent_style
 
     # Given fake and real image, return the prediction of discriminator
     # for each fake and real image.
