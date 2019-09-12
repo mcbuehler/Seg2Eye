@@ -26,9 +26,6 @@ class Pix2PixModel(torch.nn.Module):
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
 
-        # Should handle input_ns 1 and > 1
-        self.style_aggregation_method = self._get_style_aggregation_method()
-
         # set loss functions
         if opt.isTrain:
             self.criterionGAN = networks.GANLoss(
@@ -75,11 +72,11 @@ class Pix2PixModel(torch.nn.Module):
                 input_semantics, style_image, target_image)
             return d_loss
         elif mode == 'encode_only':
-            z, mu, logvar = self.encode_z(style_image)
+            z, mu, logvar, features = self.encode_z(style_image)
             return mu, logvar
         elif mode == 'inference':
             with torch.no_grad():
-                fake_image, _, _ = self.generate_fake(input_semantics, style_image)
+                fake_image, _, _, _ = self.generate_fake(input_semantics, style_image)
                 # We don't want to track our losses here as it could confound with training losses
                 self.reset_loss_log()
             return fake_image
@@ -162,10 +159,22 @@ class Pix2PixModel(torch.nn.Module):
             return input_semantics, data['style_image'], data['target']
         return input_semantics, data['style_image'], None
 
+    def _compute_style_feature_loss(self, features_fake, features_real):
+        n_feature_maps = len(features_fake[0])
+        n_batch = len(features_fake)
+        assert n_feature_maps == len(features_real[0])
+        losses = list()
+        for i in range(n_feature_maps):
+            feature_map_batch_fake = torch.stack([features_fake[b][i] for b in range(n_batch)])
+            feature_map_batch_real = torch.stack([features_real[b][i] for b in range(n_batch)])
+            feature_map_batch_fake.detach()
+            losses.append(self.criterion_style_feat(feature_map_batch_fake, feature_map_batch_real))
+        return torch.sum(torch.stack(losses))
+
     def compute_generator_loss(self, input_semantics, style_image, target_image):
         G_losses = {}
 
-        fake_image, KLD_loss, latent_style_real = self.generate_fake(
+        fake_image, KLD_loss, latent_style_real, style_features_real = self.generate_fake(
             input_semantics, style_image, compute_kld_loss=self.opt.use_vae)
 
         if self.opt.use_vae:
@@ -186,17 +195,22 @@ class Pix2PixModel(torch.nn.Module):
             G_losses['L1/weighted'] = l1_loss * self.opt.lambda_l1
             # Only for logging
             self.add_to_loss_log('L1/raw', l1_loss)
-        if self.opt.lambda_style_feat:
-            pass
-            # TODO: implement
-            #style_feat_loss = self.criterion_style_feat
-        if self.opt.lambda_style_w and self.opt.spadeStyleGen:
-            # We need to expand the produced image to simulate several style images
-            # It is important to detach the fake latent style, otherwise we learn the wrong thing.
-            latent_style_fake = self.encode_w(fake_image.unsqueeze(1)).detach()
-            style_w_loss_raw = self.criterion_style_w(latent_style_fake, latent_style_real)
-            G_losses['style_w/weighted'] = style_w_loss_raw * self.opt.lambda_style_w
-            self.add_to_loss_log('style_w/raw', style_w_loss_raw)
+
+        if self.opt.spadeStyleGen and \
+                (self.opt.lambda_style_feat or self.opt.lambda_style_w):
+            # We have some style consistency loss
+            latent_style_fake, style_features_fake = self.encode_w(fake_image.unsqueeze(1))
+            if self.opt.lambda_style_w > 0:
+                # We need to expand the produced image to simulate several style images
+                # It is important to detach the fake latent style, otherwise we learn the wrong thing.
+                latent_style_fake.detach()
+                style_w_loss_raw = self.criterion_style_w(latent_style_fake, latent_style_real)
+                G_losses['style_w/weighted'] = style_w_loss_raw * self.opt.lambda_style_w
+                self.add_to_loss_log('style_w/raw', style_w_loss_raw)
+            if self.opt.lambda_style_feat > 0:
+                style_feat_loss_raw = self._compute_style_feature_loss(style_features_fake, style_features_real)
+                G_losses['style_feat/weighted'] = style_feat_loss_raw * self.opt.lambda_style_feat
+                self.add_to_loss_log('style_feat/raw', style_feat_loss_raw)
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
@@ -219,7 +233,7 @@ class Pix2PixModel(torch.nn.Module):
     def compute_discriminator_loss(self, input_semantics, real_image, target_image):
         D_losses = {}
         with torch.no_grad():
-            fake_image, _, _ = self.generate_fake(input_semantics, real_image)
+            fake_image, _, _ , _ = self.generate_fake(input_semantics, real_image)
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
 
@@ -234,16 +248,16 @@ class Pix2PixModel(torch.nn.Module):
         return D_losses
 
     def encode_z(self, real_image):
-        mu, logvar = self.netE(real_image)
+        mu, logvar, features = self.netE(real_image)
         z = self.reparameterize(mu, logvar)
-        return z, mu, logvar
+        return z, mu, logvar, features
 
-    def _get_style_aggregation_method(self):
+    def _aggregate_tensor(self, tensor, dim=1):
         if self.opt.style_aggr_method == 'mean':
-            return lambda tensor: torch.mean(tensor, dim=1)
+            return torch.mean(tensor, dim=dim)
         elif self.opt.style_aggr_method == 'max':
             # torch.max returns indices and values, but we only want values
-            return lambda tensor: torch.max(tensor, dim=1).values
+            return torch.max(tensor, dim=dim).values
         else:
             raise ValueError(f"Aggregation method not found: {self.opt.style_aggr_method}")
 
@@ -252,71 +266,75 @@ class Pix2PixModel(torch.nn.Module):
         # for batch_i in range(real_image.shape[0]):
         #     # now we have n style images that we treat as a batch for one sample
         #     # mu will have shape (opt.input_ns, opt.dim_z)
-        outputs_netE_tensor = torch.stack([self.netE(real_image[batch_i])[0]
-                                           for batch_i in range(real_image.shape[0])], dim=0)
+        result = [self.netE(real_image[batch_i]) for batch_i in range(real_image.shape[0])]
+        mu, logvar, features = zip(*result)
+        outputs_netE_tensor = torch.stack(mu, dim=0)
 
         # batchSize, input_ns, z_dim if opt.use_z else w_dim
         if self.opt.use_z:
             assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.z_dim)
         else:
             assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.w_dim)
-        return outputs_netE_tensor
+        return outputs_netE_tensor, features
 
     def _compute_aggregated_z(self, real_image):
         assert self.opt.use_z, "You need to set use_z to True"
         # We have several style images per input sample
-        multiple_z = self._compute_multiple_netE(real_image)
-        z = self.style_aggregation_method(multiple_z)
+        multiple_z, features = self._compute_multiple_netE(real_image)
+        z = self._aggregate_tensor(multiple_z)
         assert z.shape == (real_image.shape[0], self.opt.z_dim)
-        return z
+        return z, features
 
     def _compute_aggregated_w(self, real_image):
         # We have several style images per input sample
-        if self.opt.use_z:
-            multiple_z = self._compute_multiple_netE(real_image)
-            # multiple_w has shape (bs, input_ns, w_dim)
-            multiple_w = torch.stack([self.netE(z, mode='downscale') for z in multiple_z])
-        else:
-            multiple_w = self._compute_multiple_netE(real_image)
+        multiple_w, features = self._compute_multiple_netE(real_image)
         # w has shape (bs, w_dim)
-        w = self.style_aggregation_method(multiple_w)
+        w = self._aggregate_tensor(multiple_w)
+
+        features_aggregated = list()
+        for batch_i in range(real_image.shape[0]):
+            # Keep track of aggregated feature maps for all samples in batch
+            for f in features[batch_i]:
+                self._aggregate_tensor(f, dim=0)
+            features_aggregated.append([self._aggregate_tensor(f, dim=0) for f in features[batch_i]])
         assert w.shape == (real_image.shape[0], self.opt.w_dim)
-        return w
+        return w, features_aggregated
 
     def encode_w(self, real_image):
         if len(real_image.shape) == 5:  #shape[1] is input_ns
             if self.opt.use_z and self.opt.style_aggr_space == 'z':
                 # We aggregate in z space
-                z = self._compute_aggregated_z(real_image)
+                z, features = self._compute_aggregated_z(real_image)
                 w = self.netE(z, mode='downscale')
             elif self.opt.style_aggr_space == 'w':
                 # We compute input_ns mu vectors for each sample. multiple_z.shape = (bs, input_ns, z_dim)
                 # This is the way we should be taking if we do not use a z space
-                w = self._compute_aggregated_w(real_image)
+                w, features = self._compute_aggregated_w(real_image)
         else:
             raise ValueError("real_image should have 5 dimensions")
-        return w
+        return w, features
 
     def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):
         latent_style = None
         KLD_loss = None
+        features = None
         # TODO: be careful not to overwrite values once we have a VAE for w as well
         if self.opt.use_vae:
-            latent_style, mu, logvar = self.encode_z(style_image)
+            latent_style, mu, logvar, features = self.encode_z(style_image)
             if compute_kld_loss:
                 kld_loss_raw = self.KLDLoss(mu, logvar)
                 KLD_loss = kld_loss_raw * self.opt.lambda_kld
                 self.add_to_loss_log('KLD/raw', kld_loss_raw)
 
         if self.opt.spadeStyleGen:
-            latent_style = self.encode_w(style_image)
+            latent_style, features = self.encode_w(style_image)
 
         fake_image = self.netG(input_semantics, latent_style)
 
         assert (not compute_kld_loss) or self.opt.use_vae, \
             "You cannot compute KLD loss if opt.use_vae == False"
 
-        return fake_image, KLD_loss, latent_style
+        return fake_image, KLD_loss, latent_style, features
 
     # Given fake and real image, return the prediction of discriminator
     # for each fake and real image.
