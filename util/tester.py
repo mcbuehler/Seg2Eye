@@ -130,6 +130,7 @@ class Tester:
                 break
             if i % 10 == 0:
                 print(f"Processing batch {i}")
+                print(f"Error so far: {np.sum(all_errors) / len(all_errors) * 1471}")
             errors, fake, fake_resized, target_image = self.run_batch(data_i, model)
             all_errors += list(errors)
             if write_error_log:
@@ -262,7 +263,7 @@ class MSECalculator:
     @classmethod
     def calculate_mse_for_images(cls, produced, target):
         assert produced.shape == target.shape
-        assert torch.min(produced) >= 0 and torch.max(produced) <= 255
+        assert torch.min(produced) >= 0 and torch.max(produced) <= 255, f"Min: {torch.min(produced)}, max: {torch.max(produced)}"
         assert torch.min(target) >= 0 and torch.max(target) <= 255
         assert produced.shape[-2:] == (640, 400), f"Invalid shape: {produced.shape}"
         assert len(produced.shape) == 4, "Please feed 4D tensors"
