@@ -12,6 +12,7 @@ from models.networks.loss import *
 # from models.networks.encoder import *
 # import util.util as util
 from models.networks.pupil_locator import PupilLocator
+from models.networks.refiner import Refiner
 from util import util
 
 
@@ -70,4 +71,8 @@ def define_E(opt):
 
 def define_pupil_locator(opt):
     cls = PupilLocator
+    return create_network(cls, opt)
+
+def define_refiner(opt):
+    cls = Refiner
     return create_network(cls, opt)
