@@ -90,6 +90,7 @@ class OpenEDSDataset(BaseDataset):
         mask_tensor = transform_mask(mask) * 255.0
 
         filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
+        filename = re.sub(f'\.', '', filename)
         # Get input_ns style images (already preprocessed to tensor)
         style_image_tensor = self.get_style_images(user, self.opt.input_ns, filename)
 
@@ -142,12 +143,19 @@ class OpenEDSDataset(BaseDataset):
         return indices
 
     def _sample_style_idx(self, n_images, n, user_id=None, filename=None):
+        subsets = None
         if self.opt.style_sample_method == 'random':
             indices = np.random.choice(list(range(n_images)), n)
+            # We should give the subset key as well
         elif self.opt.style_sample_method == 'first':
             indices = list(range(min(n, n_images)))
+            # We should give the subset key as well
+            indices = [(self.key_style_images, idx) for idx in indices]
         elif 'ref' in self.opt.style_sample_method:
+            use_sequence_data = 'subset' in list(self.style_image_refs[self.opt.dataset_key][user_id][filename].keys())
             all_indices = self.style_image_refs[self.opt.dataset_key][user_id][filename]['index']
+            if use_sequence_data:
+                all_subsets = self.style_image_refs[self.opt.dataset_key][user_id][filename]['subset']
             if 'random' in self.opt.style_sample_method:
                 reduced_n = re.sub(r"[^\d]", "", self.opt.style_sample_method)
                 # e.g. 0.3 for taking the nearest 40%
@@ -155,14 +163,21 @@ class OpenEDSDataset(BaseDataset):
                     reduced_n = int(reduced_n)
                 else:
                     reduced_n = 40
-                reduced_indices = all_indices[:reduced_n]
-                indices = np.random.choice(reduced_indices, n)
+                # reduced_indices = all_indices[:reduced_n]
+                # to_select only contains indices from 0 to reduced_n
+                to_select = np.random.choice(list(range(reduced_n)), n)
+                indices = [all_indices[to_select[i]] for i in range(n)]
+                if use_sequence_data:
+                    subsets = [all_subsets[to_select[i]] for i in range(n)]
             else:
                 # Best first
+                # We should give the subset key as well
                 indices = all_indices[:n]
+                if use_sequence_data:
+                    subsets = all_subsets[:n]
         else:
             raise ValueError(f"Invalid style sampling method: {self.opt.style_sample_method}")
-        return indices
+        return indices, subsets
 
     def get_style_images(self, user_id, n, filename=None):
         # user_idx = self.user_ids.index(user_id)
@@ -171,9 +186,15 @@ class OpenEDSDataset(BaseDataset):
         # selected_idx = [self.N_start[user_idx] + i for i in within_idx]
         # return selected_idx
         n_images = self.h5_in[user_id][self.key_style_images].shape[0]
-        selected_idx = self._sample_style_idx(n_images, n, user_id=user_id, filename=filename)
+        selected_idx, subsets = self._sample_style_idx(n_images, n, user_id=user_id, filename=filename)
 
-        style_images = [self.h5_in[user_id][self.key_style_images][i] for i in selected_idx]
+        subset_keys = {b'g': self.key_style_images, b's': 'images_seq'}
+        style_images = list()
+        for i, sel_i in enumerate(selected_idx):
+            subset_key = subset_keys[subsets[i]]
+            # The indices for the seq dataset are too big (they were appended to the number in the gen dataset)
+            sel_i = sel_i - n_images
+            style_images.append(self.h5_in[user_id][subset_key][sel_i])
 
         # Preprocessing
         size = style_images[0].shape[-2:]
