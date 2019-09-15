@@ -200,9 +200,11 @@ def save_network(net, label, epoch, opt):
         net.cuda()
 
 
-def load_network(net, label, epoch, opt):
+def load_network(net, label, epoch, opt, save_dir=None):
+    if save_dir is None:
+        save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+
     save_filename = '%s_net_%s.pth' % (epoch, label)
-    save_dir = os.path.join(opt.checkpoints_dir, opt.name)
     save_path = os.path.join(save_dir, save_filename)
     weights = torch.load(save_path)
     if isinstance(net, DataParallel):
