@@ -20,7 +20,7 @@ class ConvEncoder(BaseNetwork):
         pw = int(np.ceil((kw - 1.0) / 2))
         ndf = opt.ngf
         norm_layer = get_nonspade_norm_layer(opt, opt.norm_E)
-        layer1 = norm_layer(nn.Conv2d(opt.input_nc, ndf, kw, stride=2, padding=pw))
+        layer1 = norm_layer(nn.Conv2d(1, ndf, kw, stride=2, padding=pw))
         layer2 = norm_layer(nn.Conv2d(ndf * 1, ndf * 2, kw, stride=2, padding=pw))
         layer3 = norm_layer(nn.Conv2d(ndf * 2, ndf * 4, kw, stride=2, padding=pw))
         layer4 = norm_layer(nn.Conv2d(ndf * 4, ndf * 8, kw, stride=2, padding=pw))
