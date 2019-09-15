@@ -7,7 +7,7 @@ python test.py --dataroot $DR --name $name --dataset_key $DK --batchSize 1 --loa
 """
 
 import data
-from models.pix2pix_model import Pix2PixModel
+from models.pix2pix_model import Pix2PixModel, Pix2PixRefiner
 from options.test_options import TestOptions
 from util.gsheet import GoogleSheetLogger
 from util.tester import Tester
@@ -15,14 +15,17 @@ from util.tester import Tester
 if __name__ == "__main__":
 
     opt = TestOptions().parse()
-    # opt.dataset_key = 'test'
     g_logger = GoogleSheetLogger(opt)
     # load the dataset
     dataloader = data.create_dataloader(opt)
 
     tester = Tester(opt, g_logger, dataset_key=opt.dataset_key)
 
-    model = Pix2PixModel(opt)
+    if opt.netG == 'spaderefiner':
+        model = Pix2PixRefiner(opt)
+    else:
+        model = Pix2PixModel(opt)
+    # model = Pix2PixModel(opt)
     if opt.dataset_key in ['validation', 'train']:
         epoch = 2
         n_steps = 18000
