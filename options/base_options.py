@@ -3,7 +3,6 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 
-import sys
 import argparse
 import os
 from util import util
@@ -32,6 +31,8 @@ class BaseOptions():
         parser.add_argument('--spadeStyleGen', action='store_true', help='whether to input style at every layer as well.')
         parser.add_argument('--combine_mode', type=str, default='add', help='How to combine spade and style blocks', choices=('add', 'seq'))
         parser.add_argument('--debug', action='store_true', help='only do one epoch and displays at each iteration')
+        parser.add_argument('--pretrainD', action='store_true', help='Use pretrained D')
+        parser.add_argument('--pretrained_path', type=str, default='', help='only do one epoch and displays at each iteration')
 
         # input/output sizes
         parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
@@ -57,13 +58,14 @@ class BaseOptions():
         parser.add_argument('--no_flip', action='store_true', help='if specified, do not flip the images for data argumentation')
         parser.add_argument('--nThreads', default=0, type=int, help='# threads for loading data')
         parser.add_argument('--load_from_opt_file', action='store_true', help='load the options from checkpoints and use that as default')
-        parser.add_argument('--style_ref', type=str, default='datasets/style_images.h5',
+        parser.add_argument('--style_ref', type=str, default='datasets/0910_deeplab_top_image_indices_for_marcel.h5',
                             help='h5 file with references to style images that should be selected for each person. The file should have the following structure:'
                                  '[dataset_key][filename]{idx: [1,2,3,...], filename: [000012,...]}')
-
+        parser.add_argument('--seg_file', type=str, default='',
+                            help='h5 file with predicted segmentation masks for unlabeled data')
 
         # for generator
-        parser.add_argument('--netG', type=str, default='spadestyle', help='selects model to use for netG (pix2pixhd | spade | spadestyle)')
+        parser.add_argument('--netG', type=str, default='spadestyle', help='selects model to use for netG (pix2pixhd | spade | spadestyle | spaderefiner)')
         parser.add_argument('--ngf', type=int, default=64, help='# of gen filters in first conv layer')
         parser.add_argument('--init_type', type=str, default='xavier', help='network initialization [normal|xavier|kaiming|orthogonal]')
         parser.add_argument('--init_variance', type=float, default=0.02, help='variance of the initialization distribution')
