@@ -4,6 +4,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 import json
 import re
+import traceback
 
 import h5py
 import numpy as np
@@ -16,6 +17,7 @@ from data.base_dataset import BaseDataset, get_params, get_transform, flip
 class OpenEDSDataset(BaseDataset):
     style_image_refs = None
     h5_in_file = None
+    pred_seg_file = None
 
     def __init__(self):
         super().__init__()
@@ -28,6 +30,10 @@ class OpenEDSDataset(BaseDataset):
         if 'ref' in self.opt.style_sample_method and self.style_image_refs is None:
             assert self.opt.style_ref != '', "You need to provide a h5 file for style references."
             self.style_image_refs = h5py.File(self.opt.style_ref, 'r')
+
+        if self.opt.netG == 'spaderefiner':
+            assert self.opt.seg_file != ''
+            self.pred_seg_file = h5py.File(self.opt.seg_file, 'r')
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -92,7 +98,8 @@ class OpenEDSDataset(BaseDataset):
         filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
         filename = re.sub(f'\.', '', filename)
         # Get input_ns style images (already preprocessed to tensor)
-        style_image_tensor = self.get_style_images(user, self.opt.input_ns, filename)
+        transform_image = get_transform(self.opt, params)
+        style_image_tensor, selected_idx, subsets = self.get_style_images(user, self.opt.input_ns, transform_image, filename)
 
         if torch.max(mask_tensor) > 3:
             print(user, idx_target_image, filename)
@@ -105,8 +112,25 @@ class OpenEDSDataset(BaseDataset):
                       'user': user,
                       'style_image': style_image_tensor
                       }
+        # start_mask = self.pred_seg_file[self.dataset_key][user][subsets[0]][selected_idx[0]]
+        if self.opt.netG == 'spaderefiner':
+            subset_key = 'gen' if subsets[0] == b'g' else 'seq'
+            try:
+                start_mask = self.pred_seg_file[self.dataset_key][subset_key][user][selected_idx[0]]
+            except TypeError:
+                print("Type error", self.dataset_key, subset_key, subsets, user, selected_idx[0])
+                print("Did you set netG correctly to 'spaderefiner'?")
+                exit(-1)
+            except ValueError as e:
+                # traceback.print_exception()
+                print('----------')
+                print(self.dataset_key, subset_key, subsets, user, selected_idx[0])
+                exit(-1)
+            start_mask_tensor = transform_mask(start_mask) * 255
+            start_tensor = self.get_start_tensor(style_image_tensor, start_mask_tensor, mask_tensor)
+            input_dict['start_tensor'] = start_tensor
+
         if self.dataset_key != "test":
-            transform_image = get_transform(self.opt, params)
             target_image = np.array(self.h5_in[user]["images_ss"][idx_target_image])
             target_image_tensor = transform_image(target_image)
             # Only flip the target image now, otherwise it might be flipped twice
@@ -126,6 +150,31 @@ class OpenEDSDataset(BaseDataset):
 
     def __len__(self):
         return self.N
+
+    def get_start_tensor(self, style_image_tensor, start_mask, mask):
+        # Consists of the best style image where the changed parts are blacked out and the patch locations
+        # assert start_mask.shape == mask.shape
+        patches = start_mask != mask
+        patches[patches] = 1
+
+        if self.opt.dataset_key == 'train' or True:
+            # import matplotlib.pyplot as plt
+
+            # plt.imshow(patches[0])
+            # plt.show()
+            patches = patches.numpy().astype(np.uint8)
+            kernel = np.ones((10, 10), np.uint8)
+            patches = cv2.dilate(patches[0], kernel, iterations=1)
+            # plt.imshow(patches)
+            # plt.show()
+            patches = torch.from_numpy(patches).unsqueeze(0)
+
+        start_style_img = style_image_tensor[0]
+        start_style_img[patches] = -1.0
+        # plt.imshow(start_style_img[0], cmap='gray')
+        # plt.show()
+        input_tensor = torch.cat([start_style_img, patches.float()], dim=0)
+        return input_tensor
 
     def _get_transform(self, params, **kwargs):
         transform_image = get_transform(self.opt, params, **kwargs)
@@ -150,7 +199,7 @@ class OpenEDSDataset(BaseDataset):
         elif self.opt.style_sample_method == 'first':
             indices = list(range(min(n, n_images)))
             # We should give the subset key as well
-            indices = [(self.key_style_images, idx) for idx in indices]
+            indices = [idx for idx in indices]
         elif 'ref' in self.opt.style_sample_method:
             use_sequence_data = 'subset' in list(self.style_image_refs[self.opt.dataset_key][user_id][filename].keys())
             all_indices = self.style_image_refs[self.opt.dataset_key][user_id][filename]['index']
@@ -179,7 +228,7 @@ class OpenEDSDataset(BaseDataset):
             raise ValueError(f"Invalid style sampling method: {self.opt.style_sample_method}")
         return indices, subsets
 
-    def get_style_images(self, user_id, n, filename=None):
+    def get_style_images(self, user_id, n, transform_image, filename=None):
         # user_idx = self.user_ids.index(user_id)
         # n_user = self.N_start[user_idx + 1] - self.N_start[user_idx]
         # within_idx = np.random.choice(list(range(n_user)), size=n)
@@ -191,24 +240,26 @@ class OpenEDSDataset(BaseDataset):
         subset_keys = {b'g': self.key_style_images, b's': 'images_seq'}
         style_images = list()
         for i, sel_i in enumerate(selected_idx):
-            subset_key = subset_keys[subsets[i]]
+            if subsets is not None:
+                subset_key = subset_keys[subsets[i]]
+            else:
+                subset_key = self.key_style_images
             # The indices for the seq dataset are too big (they were appended to the number in the gen dataset)
-            sel_i = sel_i - n_images
+            if subset_key == 'images_seq':
+                sel_i = sel_i - n_images
+                selected_idx[i] = sel_i
             style_images.append(self.h5_in[user_id][subset_key][sel_i])
 
-        # Preprocessing
-        size = style_images[0].shape[-2:]
-        # Convert to tensor
-        params = get_params(self.opt, size)  # Only give h and w
-        transform_image = get_transform(self.opt, params)
         tensors = [transform_image(img) for img in style_images]
         style_image_tensor = torch.stack(tensors)
-        return style_image_tensor
+        return style_image_tensor, selected_idx, subsets
 
-    @classmethod
-    def unsqueeze_batch(cls, batch):
+    def unsqueeze_batch(self, batch):
         # Create a first batch size dimension
-        for key in ["style_image", "target", "target_original", "label"]:
+        keys = ["style_image", "target", "target_original", "label"]
+        if self.opt.netG == 'spaderefiner':
+            keys.append("start_tensor")
+        for key in keys:
         # for key in ["target_original"]:
             batch[key] = batch[key].unsqueeze(0)
         return batch
@@ -218,3 +269,5 @@ class OpenEDSDataset(BaseDataset):
             self.h5_in_file.close()
             self.h5_in_file = None
             self.h5_in = None
+        self.style_image_refs.close()
+        self.pred_seg_file.close()
