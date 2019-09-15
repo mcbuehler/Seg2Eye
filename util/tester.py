@@ -18,16 +18,8 @@ import torch
 
 import data
 from data.postprocessor import ImagePostprocessor
-from models.networks import openEDSaccuracy
+from models.networks import MSECalculator
 from util.visualizer import Visualizer, visualize_sidebyside
-
-
-def dataset_generator(dataloader, indices=None):
-    if indices is None:
-        return next(dataloader)
-    else:
-        for idx in indices:
-            yield dataloader.dataset.get_particular(idx)
 
 
 class Tester:
@@ -128,7 +120,7 @@ class Tester:
             counter += data_i['label'].shape[0]
             if counter > limit:
                 break
-            if i % 10 == 0:
+            if i % 10 == 9:
                 print(f"Processing batch {i}")
                 print(f"Error so far: {np.sum(all_errors) / len(all_errors) * 1471}")
             errors, fake, fake_resized, target_image = self.run_batch(data_i, model)
@@ -259,41 +251,3 @@ class Tester:
                                                limit=4)
 
 
-class MSECalculator:
-    @classmethod
-    def calculate_mse_for_images(cls, produced, target):
-        assert produced.shape == target.shape
-        assert torch.min(produced) >= 0 and torch.max(produced) <= 255, f"Min: {torch.min(produced)}, max: {torch.max(produced)}"
-        assert torch.min(target) >= 0 and torch.max(target) <= 255
-        assert produced.shape[-2:] == (640, 400), f"Invalid shape: {produced.shape}"
-        assert len(produced.shape) == 4, "Please feed 4D tensors"
-
-        mse_error = list()
-        # We compute the norm for each image and then normalise it
-        batch_size = produced.shape[0]
-        for i in range(batch_size):
-            produced_i = produced[i]
-            target_i = target[i]
-            # diff_i = torch.add(produced_i, torch.mul(target_i, -1)).float()
-            norm_i = openEDSaccuracy(produced_i, target_i)
-            mse_error.append(norm_i)
-        mse_error = torch.stack(mse_error)
-        return mse_error
-
-    @classmethod
-    def calculate_error_statistics(cls, all_errors, mode, dataset_key):
-        """
-
-        Args:
-            all_errors:
-            mode: full, partial
-
-        Returns:
-
-        """
-        all_errors_sum = np.sum(all_errors)
-        relative_errors_sum = all_errors_sum / len(all_errors) * 1471
-        errors_dict = {
-            # f'mse/{dataset_key}/{mode}/sum': all_errors_sum,
-                       f'mse/{dataset_key}/{mode}/relative': relative_errors_sum}
-        return errors_dict
