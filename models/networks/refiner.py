@@ -5,10 +5,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import torch
 import torch.nn as nn
 from data.postprocessor import ImagePostprocessor
-
-from util.tester import MSECalculator
-
-from models.networks.loss import openEDSaccuracy
+from models.networks import MSECalculator
 
 from models.networks.architecture import SPADEResnetBlock
 
