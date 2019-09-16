@@ -26,10 +26,12 @@ if __name__ == "__main__":
     else:
         model = Pix2PixModel(opt)
     # model = Pix2PixModel(opt)
-    if opt.dataset_key in ['validation', 'train']:
+    if opt.dataset_key in ['validation', 'train'] and not opt.produce_npy:
+        print("Running validation")
         epoch = 2
         n_steps = 18000
         tester.run(model, mode='full', epoch=epoch, n_steps=n_steps, write_error_log=opt.write_error_log)
     else:
+        print("Running inference")
         tester.run_test(model)
 
