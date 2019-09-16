@@ -45,7 +45,7 @@ class BaseOptions():
         parser.add_argument('--output_nc', type=int, default=1, help='# of output image channels')
         parser.add_argument('--input_ns', type=int, default=1, help='Number of style inputs')
         parser.add_argument('--style_aggr_method', type=str, default='mean', help='Style aggregation method', choices=('mean', 'max'))
-        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first', 'ref_first', 'ref_random40', 'ref_random6'))
+        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first', 'ref_first', 'ref_random40', 'ref_random6', 'ref_random200', 'ref_random100', 'ref_random50'))
         parser.add_argument('--style_aggr_space', type=str, default='w', help='Where to aggregate multiple style images', choices=('z', 'w'))
         parser.add_argument('--use_z', action='store_true', help='Whether to use a z space or directly collapse to w')
         # parser.add_argument('--output_wh', type=int, nargs='+', default=(400, 640), help='width and height of output image')
