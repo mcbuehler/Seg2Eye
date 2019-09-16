@@ -157,7 +157,7 @@ class OpenEDSDataset(BaseDataset):
         patches = start_mask != mask
         patches[patches] = 1
 
-        if self.opt.dataset_key == 'train' or True:
+        if self.opt.dataset_key == 'train' or self.opt.dilate_test:
             # import matplotlib.pyplot as plt
 
             # plt.imshow(patches[0])
