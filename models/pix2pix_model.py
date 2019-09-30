@@ -47,6 +47,8 @@ class Pix2PixModel(torch.nn.Module):
             if opt.lambda_style_w > 0:
                 # Loss on latent style code
                 self.criterion_style_w = nn.MSELoss()
+            if opt.lambda_gram > 0:
+                self.criterion_gram = networks.StyleLoss()
             self.reset_loss_log()
 
     def get_loss_log(self):
@@ -77,11 +79,15 @@ class Pix2PixModel(torch.nn.Module):
                 input_semantics, style_image, target_image)
             return d_loss
         elif mode == 'encode_only':
-            z, mu, logvar, features = self.encode_z(style_image)
-            return mu, logvar
+            w, features = self.encode_w(style_image)
+            return w
         elif mode == 'inference':
             with torch.no_grad():
-                fake_image, _, _, _ = self.generate_fake(input_semantics, style_image)
+                if 'latent_style' in data:
+                    print("Using given latent style...")
+                    fake_image = self.generate_fake_from_stylecode(input_semantics, data['latent_style'])
+                else:
+                    fake_image, _, _, _ = self.generate_fake(input_semantics, style_image)
                 # We don't want to track our losses here as it could confound with training losses
                 self.reset_loss_log()
             return fake_image
@@ -176,6 +182,18 @@ class Pix2PixModel(torch.nn.Module):
             losses.append(self.criterion_style_feat(feature_map_batch_fake, feature_map_batch_real))
         return torch.sum(torch.stack(losses))
 
+    def _compute_gram_loss(self, features_fake, features_real):
+        n_feature_maps = len(features_fake[0])
+        n_batch = len(features_fake)
+        assert n_feature_maps == len(features_real[0])
+        losses = list()
+        for i in range(n_feature_maps):
+            feature_map_batch_fake = torch.stack([features_fake[b][i] for b in range(n_batch)])
+            feature_map_batch_real = torch.stack([features_real[b][i] for b in range(n_batch)])
+            feature_map_batch_fake.detach()
+            losses.append(self.criterion_gram(feature_map_batch_fake, feature_map_batch_real))
+        return torch.sum(torch.stack(losses))
+
     def compute_generator_loss(self, input_semantics, style_image, target_image):
         G_losses = {}
 
@@ -207,7 +225,7 @@ class Pix2PixModel(torch.nn.Module):
             self.add_to_loss_log('openeds/raw', openeds_loss)
 
         if self.opt.spadeStyleGen and \
-                (self.opt.lambda_style_feat or self.opt.lambda_style_w):
+                (self.opt.lambda_style_feat or self.opt.lambda_style_w or self.opt.lambda_gram):
             # We have some style consistency loss
             latent_style_fake, style_features_fake = self.encode_w(fake_image.unsqueeze(1))
             if self.opt.lambda_style_w > 0:
@@ -221,6 +239,10 @@ class Pix2PixModel(torch.nn.Module):
                 style_feat_loss_raw = self._compute_style_feature_loss(style_features_fake, style_features_real)
                 G_losses['style_feat/weighted'] = style_feat_loss_raw * self.opt.lambda_style_feat
                 self.add_to_loss_log('style_feat/raw', style_feat_loss_raw)
+            if self.opt.lambda_gram > 0:
+                gram_loss_raw = self._compute_gram_loss(style_features_fake, style_features_real)
+                G_losses['gram/weighted'] = gram_loss_raw * self.opt.lambda_gram
+                self.add_to_loss_log('gram/raw', gram_loss_raw)
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
@@ -324,6 +346,10 @@ class Pix2PixModel(torch.nn.Module):
             raise ValueError("real_image should have 5 dimensions")
         return w, features
 
+    def generate_fake_from_stylecode(self, input_semantics, latent_style):
+        fake_image = self.netG(input_semantics, latent_style)
+        return fake_image
+
     def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):
         latent_style = None
         KLD_loss = None
@@ -339,7 +365,7 @@ class Pix2PixModel(torch.nn.Module):
         if self.opt.spadeStyleGen:
             latent_style, features = self.encode_w(style_image)
 
-        fake_image = self.netG(input_semantics, latent_style)
+        fake_image = self.generate_fake_from_stylecode(input_semantics, latent_style)
 
         assert (not compute_kld_loss) or self.opt.use_vae, \
             "You cannot compute KLD loss if opt.use_vae == False"
