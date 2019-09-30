@@ -24,7 +24,7 @@ class TrainOptions(BaseOptions):
         # for training
         parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
         parser.add_argument('--which_epoch', type=str, default='latest', help='which epoch to load? set to latest to use latest cached model')
-        parser.add_argument('--niter', type=int, default=7, help='# of iter at starting learning rate. This is NOT the total #epochs. Totla #epochs is niter + niter_decay')
+        parser.add_argument('--niter', type=int, default=14, help='# of iter at starting learning rate. This is NOT the total #epochs. Totla #epochs is niter + niter_decay')
         parser.add_argument('--niter_decay', type=int, default=7, help='# of iter to linearly decay learning rate to zero')
         parser.add_argument('--optimizer', type=str, default='adam')
         parser.add_argument('--beta1', type=float, default=0.5, help='momentum term of adam')
@@ -49,7 +49,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lambda_kld', type=float, default=0.05)
         parser.add_argument('--lambda_style_w', type=float, default=0.0)
         parser.add_argument('--lambda_style_feat', type=float, default=0.0)
-
+        parser.add_argument('--lambda_gram', type=float, default=0.0)
         parser.set_defaults(no_vgg_loss=True)
         self.isTrain = True
         return parser

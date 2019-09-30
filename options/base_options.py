@@ -33,6 +33,7 @@ class BaseOptions():
         parser.add_argument('--debug', action='store_true', help='only do one epoch and displays at each iteration')
         parser.add_argument('--pretrainD', action='store_true', help='Use pretrained D')
         parser.add_argument('--pretrained_path', type=str, default='', help='only do one epoch and displays at each iteration')
+        parser.add_argument('--dilate_test', action='store_true', help='Whether to dilate at test time')
 
         # input/output sizes
         parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
