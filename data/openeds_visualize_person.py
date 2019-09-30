@@ -49,16 +49,42 @@ def resize(grid_np):
     return pil_img
 
 
+def generate_grid_for_person(h5_in, dataset_key, subset_keys, person_id, shuffle=False, limit=-1, path_out=''):
+        person_data = h5_in[dataset_key][person_id]
+
+        grids = list()
+        for subset_key in subset_keys:
+            # print(h5_in[dataset_key][person_id][subset_key+"_filenames"][3])
+            if shuffle:
+                idx = np.random.choice(list(range(person_data[subset_key].shape[0])), size=limit)
+                images = np.array([person_data[subset_key][i] for i in idx])
+            else:
+                images =person_data[subset_key][:limit]
+            images = torch.from_numpy(images)
+            grid = make_grid(images.unsqueeze(1), nrow=4)
+            grids.append(grid)
+        grid_np = torch.cat(grids, dim=-1).numpy()[0]
+
+        path_out = os.path.join(path_out, person_id + '.png')
+        image = resize(grid_np)
+        image.save(path_out)
+
+
+
 if __name__ == '__main__':
-    path_h5 = '/home/marcel/projects/data/openeds/all.h5'
+    path_h5 = '/home/marcel/projects/data/openeds/190910_all.h5'
     h5_in = h5py.File(path_h5, 'r')
     path_out = '/home/marcel/projects/data/openeds/person_analysis/index_order'
 
-    limit = 48
+    limit = 12
     shuffle = True
-    shuffle = False
+    # shuffle = False
     np.random.seed(1234)
-    dataset_key = 'test'
+    dataset_key = 'validation'
+    person_id = 'U218'
+
+    generate_grid_for_person(h5_in, dataset_key, ['images_ss', 'images_gen', 'images_seq'], person_id, shuffle=shuffle, limit=limit, path_out=path_out)
+    exit()
 
     all_person_ids = list(h5_in[dataset_key].keys())
     for i, person_id in enumerate(all_person_ids):
