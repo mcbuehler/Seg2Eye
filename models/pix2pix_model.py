@@ -5,12 +5,10 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import torch
 from util.tester import MSECalculator
 
-from models.networks.loss import openEDSaccuracy
 from torch import nn
 import models.networks as networks
 import util.util as util
-from RAdam.radam import RAdam
-from data.postprocessor import ImagePostprocessor
+
 
 
 class Pix2PixModel(torch.nn.Module):
@@ -108,10 +106,7 @@ class Pix2PixModel(torch.nn.Module):
             beta1, beta2 = 0, 0.9
             G_lr, D_lr = opt.lr / 2, opt.lr * 2
 
-        if self.opt.use_radam:
-            optimizer_class = RAdam
-        else:
-            optimizer_class = torch.optim.Adam
+        optimizer_class = torch.optim.Adam
 
         optimizer_G = optimizer_class(G_params, lr=G_lr, betas=(beta1, beta2), weight_decay=self.opt.weight_decay)
         optimizer_D = optimizer_class(D_params, lr=D_lr, betas=(beta1, beta2), weight_decay=self.opt.weight_decay)

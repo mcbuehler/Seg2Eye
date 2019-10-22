@@ -72,7 +72,7 @@ class BaseOptions():
         parser.add_argument('--init_variance', type=float, default=0.02, help='variance of the initialization distribution')
         parser.add_argument('--z_dim', type=int, default=256,
                             help="dimension of the latent z vector")
-        parser.add_argument('--w_dim', type=int, default=8, help='Dimensionality of the latent style vector w')
+        parser.add_argument('--w_dim', type=int, default=16, help='Dimensionality of the latent style vector w')
 
         parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')
         parser.add_argument('--use_vae', action='store_true', help='enable training with an image encoder.')
