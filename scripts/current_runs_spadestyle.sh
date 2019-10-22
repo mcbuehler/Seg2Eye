@@ -184,7 +184,10 @@ done
 
 
 
-
+export DK=test
+export name=190925_spadestyle_size256_l2_15_lambda_w_0.5_lambda_feat_0.001_lambda_gram_100000_w16___spadeStyleGen_cmadd_ns4_SAMmax_SSMref_random100
+bsub -n 1 -W 4:00 -o "lsf_"$DK"_""$name" -R "rusage[mem=32048, ngpus_excl_p=1]" -R "select[gpu_mtotal0>=10240]" \
+python test.py --dataroot $DR --name $name --dataset_key $DK --batchSize 1 --load_from_opt_file --produce_npy
 
 
 export DK=train
