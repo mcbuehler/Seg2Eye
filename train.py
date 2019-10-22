@@ -22,9 +22,9 @@ from util.visualizer import Visualizer
 opt = TrainOptions().parse()
 
 
-# opt.display_freq = 1
-# opt.print_freq = 1
-# opt.validation_limit = 1
+opt.display_freq = 1
+opt.print_freq = 1
+opt.validation_limit = 1
 
 copy_src(path_from='./', path_to=os.path.join(opt.checkpoints_dir, opt.name))
 

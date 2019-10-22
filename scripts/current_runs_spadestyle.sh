@@ -1,8 +1,24 @@
+# Cluster specific
 source ~/python-venv/iccv/bin/activate
 export PYTHONPATH=$PYTHONPATH:/cluster/home/buehlmar/iccv_projects/SPADE_custom/
 module load hdf5/1.10.1 python_gpu/3.6.4
 cd /cluster/home/buehlmar/iccv_projects/SPADE_custom
 module load eth_proxy
+
+export DR=/cluster/work/hilliges/buehlmar/iccv/data/openeds/190910_all.h5
+export SEG=/cluster/work/hilliges/buehlmar/iccv/data/openeds/190914_deeplab_seg_predictions.h5
+export SR=datasets/distances_and_indices.h5
+export pretrained_path=/cluster/home/buehlmar/iccv_projects/SPADE_custom/checkpoints/190912_size512_bs1_lr.0002_l1_0_l2_15_lambda_w_0.5_lambda_feat_0.001_w1024___spadeStyleGen_cmadd_ns3_SAMmax_wc0_SSMref_random6
+
+
+# Desktop specific
+source ~/python-venv/pytorch_gpu/bin/activate
+cd /home/marcel/projects/Seg2Eye
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+export DR=/home/marcel/projects/data/openeds/190910_all.h5
+export SR=/home/marcel/projects/data/openeds/datasets/distances_and_indices.h5
+
+
 
 
 export DATE=$(date +"%y%m%d")
@@ -11,9 +27,7 @@ export lr=0.0002
 export checkpoints_dir=./checkpoints
 export cm=add
 
-export radam=
 export DK=train
-export DR=/cluster/work/hilliges/buehlmar/iccv/data/openeds/190910_all.h5
 export wc=0
 export bs=1
 export spadeStyleGen=--spadeStyleGen
@@ -25,13 +39,10 @@ export netG=spadestyle
 export lambda_w=0.5
 export lambda_feat=0.001
 export NS=40
-export SEG=/cluster/work/hilliges/buehlmar/iccv/data/openeds/190914_deeplab_seg_predictions.h5
-export SR=datasets/distances_and_indices.h5
-export pretrained_path=/cluster/home/buehlmar/iccv_projects/SPADE_custom/checkpoints/190912_size512_bs1_lr.0002_l1_0_l2_15_lambda_w_0.5_lambda_feat_0.001_w1024___spadeStyleGen_cmadd_ns3_SAMmax_wc0_SSMref_random6
 export openeds=0
 export l1=0
 export l2=15
-
+export w_dim=16
 
 
 export DATE=190924

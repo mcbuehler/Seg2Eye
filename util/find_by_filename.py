@@ -1,1 +1,0 @@
-list(map(lambda x: x.decode('utf-8'), f['train']['U119']['images_ss_filenames'])).index('000000024573')
