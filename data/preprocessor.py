@@ -6,8 +6,6 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-# from src.util import gaze as gaze_func
-
 
 class ImagePreprocessor(object):
     vgg_transform = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -210,40 +208,6 @@ class Preprocessor:
         h_yaw = -h_yaw
         return np.asarray([np.radians(h_pitch), np.radians(h_yaw)],
                           dtype=np.float32)
-    #
-    # @staticmethod
-    # def look_vec_to_gaze_vec(json_data):
-    #     look_vec = np.array(eval(json_data['eye_details']['look_vec']))[:3]
-    #     look_vec[0] = -look_vec[0]
-    #
-    #     original_gaze = gaze_func.vector_to_pitchyaw(
-    #         look_vec.reshape((1, 3))).flatten()
-    #     rotate_mat = np.asmatrix(np.eye(3))
-    #     look_vec = rotate_mat * look_vec.reshape(3, 1)
-    #
-    #     gaze = gaze_func.vector_to_pitchyaw(look_vec.reshape((1, 3))).flatten()
-    #     if gaze[1] > 0.0:
-    #         gaze[1] = np.pi - gaze[1]
-    #     elif gaze[1] < 0.0:
-    #         gaze[1] = -(np.pi + gaze[1])
-    #     gaze = gaze.astype(np.float32)
-    #     return gaze, original_gaze
-    #
-    # def do_kappa_augment_labels(self, gaze):
-    #     """
-    #     Modifies input gaze
-    #     Args:
-    #         gaze: 2D vector pitch/yaw
-    #
-    #     Returns:
-    #
-    #     """
-    #     pitch_degree, yaw_degree = [gaze_func.radians2degree(v) for v in gaze]
-    #     pitch_degree_augmented = pitch_degree + self.kappa_tuning[0]
-    #     yaw_degree_augmented = yaw_degree + self.kappa_tuning[1]
-    #     # TODO: make sure the gaze is in the allowed range
-    #     result = np.array([gaze_func.degree2radians(pitch_degree_augmented), gaze_func.degree2radians(yaw_degree_augmented)])
-    #     return result.astype(np.float32)
 
     def _rescale(self, eye, ow, oh):
         # Rescale image if required

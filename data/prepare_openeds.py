@@ -12,7 +12,7 @@ class OpenEDSPreparator:
     FOLDER_GENERATIVE = "Generative_Dataset"
     FOLDER_SEQUENTIAL = "Sequence_Dataset"
 
-    def __init__(self, base_path, limit=-1, verbose=False, n_jobs=8, out_filename="all.h5"):
+    def __init__(self, base_path, limit=-1, verbose=False, n_jobs=8, out_filename="openeds.h5"):
         self.base_path = base_path
         self.limit = limit - 1 if limit > 0 else np.inf
         self.verbose = verbose
@@ -41,18 +41,8 @@ class OpenEDSPreparator:
             return None
 
         if len(img.shape) > 2:
-            # import matplotlib.pyplot as ply
-            # ply.imshow(img)
-            # ply.show()
-            # flat = img.reshape(-1, 3)
-            # for i in np.random.choice(len(flat), size=10):  # For computationel efficiency only check 10 entries
-            #     We want to make sure that all values in channel 3 are the same, so we can omit them.
-                # e = flat[i]
-                # assert np.min(e) == np.max(e)
             img = np.mean(img, axis=2)
-
-        # img = ImagePreprocessor.normalize(img)
-        # We don't need the jpg in the filenameZ
+        # We don't need the jpg in the filename
         return img, filename[:-4]
 
     def create_dataset_images(self, path, img_ids, group_user, ds_name):
@@ -87,8 +77,7 @@ class OpenEDSPreparator:
 
             g_subset = file_out.create_group(subset)
 
-            path_user_ids = "/home/marcel/projects/data/openeds/OpenEDS_{}_userID_mapping_to_images.json".format(
-                subset)
+            path_user_ids = os.path.join(self.base_path, f"OpenEDS_{subset}_userID_mapping_to_images.json")
             with open(path_user_ids, 'r') as f:
                 user_ids = json.load(f)
 
@@ -145,8 +134,7 @@ class OpenEDSPreparator:
 
 if __name__ == "__main__":
     base_path = "/home/marcel/projects/data/openeds"
-    # out_filename = "small.h5"
-    out_filename = "190910_all.h5"
+    out_filename = "openeds.h5"
     limit = -1
     preparator = OpenEDSPreparator(base_path=base_path, verbose=True, limit=limit, n_jobs=4, out_filename=out_filename)
     preparator.run()
