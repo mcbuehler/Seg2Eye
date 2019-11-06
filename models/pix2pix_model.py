@@ -325,14 +325,9 @@ class Pix2PixModel(torch.nn.Module):
 
     def encode_w(self, real_image):
         if len(real_image.shape) == 5:  #shape[1] is input_ns
-            if self.opt.use_z and self.opt.style_aggr_space == 'z':
-                # We aggregate in z space
-                z, features = self._compute_aggregated_z(real_image)
-                w = self.netE(z, mode='downscale')
-            elif self.opt.style_aggr_space == 'w':
-                # We compute input_ns mu vectors for each sample. multiple_z.shape = (bs, input_ns, z_dim)
-                # This is the way we should be taking if we do not use a z space
-                w, features = self._compute_aggregated_w(real_image)
+            # We compute input_ns mu vectors for each sample. multiple_z.shape = (bs, input_ns, z_dim)
+            # This is the way we should be taking if we do not use a z space
+            w, features = self._compute_aggregated_w(real_image)
         else:
             raise ValueError("real_image should have 5 dimensions")
         return w, features

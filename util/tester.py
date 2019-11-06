@@ -29,7 +29,6 @@ class Tester:
 
         self.opt.serial_batches = True
         self.opt.no_flip = True
-        self.opt.phase = 'test'
         self.opt.isTrain = False
         self.opt.dataset_key = dataset_key
 

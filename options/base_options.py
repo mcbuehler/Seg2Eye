@@ -25,8 +25,6 @@ class BaseOptions():
         parser.add_argument('--norm_G', type=str, default='spectralspadesyncbatch3x3', help='instance normalization or batch normalization')
         parser.add_argument('--norm_D', type=str, default='spectralinstance', help='instance normalization or batch normalization')
         parser.add_argument('--norm_E', type=str, default='spectralinstance', help='instance normalization or batch normalization')
-        parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
-        parser.add_argument('--combine_mode', type=str, default='add', help='How to combine spade and style blocks', choices=('add', 'seq'))
 
         # input/output sizes
         parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
@@ -34,13 +32,12 @@ class BaseOptions():
         parser.add_argument('--load_size', type=int, default=256, help='Scale images to this size. The final image will be cropped to --crop_size.')
         parser.add_argument('--crop_size', type=int, default=256, help='Crop to the width of crop_size (after initially scaling the images to load_size.)')
         parser.add_argument('--aspect_ratio', type=float, default=0.8, help='The ratio width/height. The final height of the load image will be crop_size/aspect_ratio')
-        parser.add_argument('--label_nc', type=int, default=5, help='# of input label classes without unknown class. If you have unknown class as class label, specify --contain_dopntcare_label.')
+        parser.add_argument('--label_nc', type=int, default=4, help='# of input label classes without unknown class. If you have unknown class as class label, specify --contain_dopntcare_label.')
         parser.add_argument('--input_nc', type=int, default=1, help='# of input image channels')
         parser.add_argument('--output_nc', type=int, default=1, help='# of output image channels')
-        parser.add_argument('--input_ns', type=int, default=1, help='Number of style inputs')
+        parser.add_argument('--input_ns', type=int, default=4, help='Number of style inputs')
         parser.add_argument('--style_aggr_method', type=str, default='mean', help='Style aggregation method', choices=('mean', 'max'))
         parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first', 'ref_first', 'ref_random40', 'ref_random6', 'ref_random200', 'ref_random100', 'ref_random50'))
-        parser.add_argument('--style_aggr_space', type=str, default='w', help='Where to aggregate multiple style images', choices=('z', 'w'))
         parser.add_argument('--use_z', action='store_true', help='Whether to use a z space or directly collapse to w')
         # parser.add_argument('--output_wh', type=int, nargs='+', default=(400, 640), help='width and height of output image')
 
@@ -58,17 +55,12 @@ class BaseOptions():
         parser.add_argument('--seg_file', type=str, default='',
                             help='h5 file with predicted segmentation masks for unlabeled data')
 
-        # for generator
-        parser.add_argument('--netG', type=str, default='spadestyle', help='selects model to use for netG (pix2pixhd | spade | spadestyle | spaderefiner)')
         parser.add_argument('--ngf', type=int, default=64, help='# of gen filters in first conv layer')
         parser.add_argument('--init_type', type=str, default='xavier', help='network initialization [normal|xavier|kaiming|orthogonal]')
         parser.add_argument('--init_variance', type=float, default=0.02, help='variance of the initialization distribution')
-        parser.add_argument('--z_dim', type=int, default=256,
-                            help="dimension of the latent z vector")
         parser.add_argument('--w_dim', type=int, default=16, help='Dimensionality of the latent style vector w')
 
         parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')
-        parser.add_argument('--use_vae', action='store_true', help='enable training with an image encoder.')
 
         parser.add_argument('--gsheet_secrets_json_file', default='config/gsheet.json', type=str, help='enable training with an image encoder.')
 

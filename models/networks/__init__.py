@@ -6,6 +6,9 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import torch
 import torch.nn as nn
 from models.networks.base_network import BaseNetwork
+from models.networks.discriminator import MultiscaleDiscriminator
+from models.networks.encoder import ConvEncoder
+from models.networks.generator import SPADESTYLEGenerator
 from models.networks.loss import *
 from util import util
 
@@ -48,16 +51,12 @@ def create_network(cls, opt):
 
 
 def define_G(opt):
-    netG_cls = find_network_using_name(opt.netG, 'generator')
-    return create_network(netG_cls, opt)
+    create_network(SPADESTYLEGenerator, opt)
 
 
 def define_D(opt):
-    netD_cls = find_network_using_name(opt.netD, 'discriminator')
-    return create_network(netD_cls, opt)
+    return create_network(MultiscaleDiscriminator, opt)
 
 
 def define_E(opt):
-    # there exists only one encoder type
-    netE_cls = find_network_using_name('conv', 'encoder')
-    return create_network(netE_cls, opt)
+    return create_network(ConvEncoder, opt)

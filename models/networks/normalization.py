@@ -185,14 +185,9 @@ class SPADE_STYLE_Block(nn.Module):
 
     def forward(self, x, segmap, latent_style):
         output_adain = self.adain(x, latent_style)
-        if self.combine_mode == 'add':
-            # We compute adain and spade from input x and add the outputs of the two blocks
-            output_spade = self.spade(x, segmap)
-            out = (output_spade + output_adain) / 2
-        elif self.combine_mode == 'seq':
-            # We compute adain from the input x and spade from the output of adain
-            output_spade = self.spade(output_adain, segmap)
-            out = output_spade
-        else:
-            raise ValueError(f"Invalid mode for combining style and spade: {self.combine_mode}")
+        # We compute adain and spade from input x and add the outputs of the two blocks
+        output_spade = self.spade(x, segmap)
+        # Dividing by two weights both inputs equally, but helps with
+        # training stability.
+        out = (output_spade + output_adain) / 2
         return out
