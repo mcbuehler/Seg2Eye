@@ -94,8 +94,7 @@ class Pix2PixModel(torch.nn.Module):
 
     def create_optimizers(self, opt):
         G_params = list(self.netG.parameters())
-        if opt.use_vae or opt.spadeStyleGen:
-            G_params += list(self.netE.parameters())
+        G_params += list(self.netE.parameters())
         if opt.isTrain:
             D_params = list(self.netD.parameters())
 
@@ -116,8 +115,7 @@ class Pix2PixModel(torch.nn.Module):
     def save(self, epoch):
         util.save_network(self.netG, 'G', epoch, self.opt)
         util.save_network(self.netD, 'D', epoch, self.opt)
-        if self.opt.use_vae or self.opt.spadeStyleGen:
-            util.save_network(self.netE, 'E', epoch, self.opt)
+        util.save_network(self.netE, 'E', epoch, self.opt)
 
     ############################################################################
     # Private helper methods
@@ -126,13 +124,12 @@ class Pix2PixModel(torch.nn.Module):
     def initialize_networks(self, opt):
         netG = networks.define_G(opt)
         netD = networks.define_D(opt) if opt.isTrain else None
-        netE = networks.define_E(opt) if opt.use_vae or opt.spadeStyleGen else None
+        netE = networks.define_E(opt)
 
         if not opt.isTrain or opt.continue_train:
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
-            if opt.use_vae or opt.spadeStyleGen:
                 netE = util.load_network(netE, 'E', opt.which_epoch, opt)
 
         return netG, netD, netE
@@ -219,8 +216,7 @@ class Pix2PixModel(torch.nn.Module):
             # Only for logging
             self.add_to_loss_log('openeds/raw', openeds_loss)
 
-        if self.opt.spadeStyleGen and \
-                (self.opt.lambda_style_feat or self.opt.lambda_style_w or self.opt.lambda_gram):
+        if self.opt.lambda_style_feat or self.opt.lambda_style_w or self.opt.lambda_gram:
             # We have some style consistency loss
             latent_style_fake, style_features_fake = self.encode_w(fake_image.unsqueeze(1))
             if self.opt.lambda_style_w > 0:
@@ -346,22 +342,9 @@ class Pix2PixModel(torch.nn.Module):
         return fake_image
 
     def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):
-        latent_style = None
         KLD_loss = None
-        features = None
-        # TODO: be careful not to overwrite values once we have a VAE for w as well
-        if self.opt.use_vae:
-            latent_style, mu, logvar, features = self.encode_z(style_image)
-            if compute_kld_loss:
-                kld_loss_raw = self.KLDLoss(mu, logvar)
-                KLD_loss = kld_loss_raw * self.opt.lambda_kld
-                self.add_to_loss_log('KLD/raw', kld_loss_raw)
-
-        if self.opt.spadeStyleGen:
-            latent_style, features = self.encode_w(style_image)
-
+        latent_style, features = self.encode_w(style_image)
         fake_image = self.generate_fake_from_stylecode(input_semantics, latent_style)
-
         assert (not compute_kld_loss) or self.opt.use_vae, \
             "You cannot compute KLD loss if opt.use_vae == False"
 
