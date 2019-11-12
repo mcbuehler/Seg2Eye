@@ -1,3 +1,6 @@
+## Please Note
+We cannot provide the necessary data for running the model because the OpenEDS dataset has not been released (as of 12th November 2019). However, we provide the code used for winning the OpenEDS Challenge at ICCV 2019.
+
 ## Setup
 Please use python 3.5 or above.
 
@@ -7,7 +10,7 @@ Please use python 3.5 or above.
 
 2) Download the required files and the dataset
 
-```sh downloads.sh```
+**We have no permission to provide the dataset at the moment (12th November 2019)**
 
 3) Add the directory to PYTHONPATH:
 
