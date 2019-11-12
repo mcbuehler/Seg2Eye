@@ -23,7 +23,7 @@ Accurately labeled real-world training data can be scarce, and hence recent
 <img target="_blank" title="Style Interpolation Demo" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/interpolation_single.gif" width="100">
 
 [Marcel C. Bühler](http://mcbuehler.ch), [Seonwook Park](https://ait.ethz.ch/people/spark/), [Shalini De Mello](https://research.nvidia.com/person/shalini-gupta),
-[Xucong Zhang](https://ait.ethz.ch/people/zhang/), [Otmar Hilliger](https://ait.ethz.ch/people/hilliges/)
+[Xucong Zhang](https://ait.ethz.ch/people/zhang/), [Otmar Hilliges](https://ait.ethz.ch/people/hilliges/)
 
 [VR and AR Workshop](https://research.fb.com/programs/the-2019-openeds-workshop-eye-tracking-for-vr-and-ar/) at [ICCV 2019](http://iccv2019.thecvf.com/)
 
