@@ -4,7 +4,7 @@
 # Content-Consistent Generation of Realistic Eyes with Style
 [Project page](https://ait.ethz.ch/projects/2019/seg2eye/) |  [Paper](https://arxiv.org/abs/1911.03346)
 
-### Abstract
+## Abstract
 Accurately labeled real-world training data can be scarce, and hence recent
  works adapt, modify or generate images to boost target datasets.
  However, retaining relevant details from input data in the generated images
@@ -18,18 +18,23 @@ Accurately labeled real-world training data can be scarce, and hence recent
  principled approach to solving the problem involving simultaneous injection
  of style and content information at multiple scales.
 
-![Style Interpolation Demo](https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/interpolation_single.gif)
+<img target="_blank" title="Style Interpolation Demo" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/interpolation_single.gif" width="100">
 
 [Marcel C. Bühler](http://mcbuehler.ch), [Seonwook Park](https://ait.ethz.ch/people/spark/), [Shalini De Mello](https://research.nvidia.com/person/shalini-gupta),
-[Xucong Zhang](https://ait.ethz.ch/people/zhang/), [Otmar Hilliger](https://ait.ethz.ch/people/hilliges/) \\
+[Xucong Zhang](https://ait.ethz.ch/people/zhang/), [Otmar Hilliger](https://ait.ethz.ch/people/hilliges/)
 
-[ICCV Workshop 2019](http://iccv2019.thecvf.com/) \\
-
-[VR and AR Workshop](https://research.fb.com/programs/the-2019-openeds-workshop-eye-tracking-for-vr-and-ar/)
+[VR and AR Workshop](https://research.fb.com/programs/the-2019-openeds-workshop-eye-tracking-for-vr-and-ar/) at [ICCV 2019](http://iccv2019.thecvf.com/)
 
 
+## Architecture
 
-## Dataset Preparation
+For details, please refer to our [Paper](https://arxiv.org/abs/1911.03346).
+
+<img target="_blank" title="High-Level Architecture" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/spadestyle_highlevel.png" width="200">
+<img target="_blank" title="SPADE+Style Block" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/spadestyleblock_clean.png" width="200">
+
+## Usage
+### Dataset Preparation
 
 1. You need access to the OpenEDS Dataset. Please find more information [here](https://research.fb.com/programs/openeds-challenge).
 
@@ -41,7 +46,7 @@ python data/prepare_openeds.py
 ```
 This will produce an H5 file that you can use to train or test Seg2Eye models.
 
-## Training New Models
+### Training New Models
 Run
 ```
 python train.py --dataroot PATH_TO_H5_FILE
@@ -51,13 +56,13 @@ Please note:
 
 * This implementation currently does not support multi-GPU training.
 
-## Testing
+### Testing
 ```
 python test.py --dataroot PATH_TO_H5_FILE --name CHECKPOINT_NAME \
     --dataset_key VALIDATION|TEST --load_from_opt_file
 ```
 
-## Code Structure
+### Code Structure
 
 - `train.py`, `test.py`: the entry point for training and testing.
 - `trainers/pix2pix_trainer.py`: harnesses and reports the progress of training.
@@ -66,7 +71,7 @@ python test.py --dataroot PATH_TO_H5_FILE --name CHECKPOINT_NAME \
 - `options/`: creates option lists using `argparse` package. More individuals are dynamically added in other files as well. Please see the section below.
 - `data/`: defines the class for loading and processing data.
 
-### [License](https://raw.githubusercontent.com/mcbuehler/Seg2Eye/master/LICENSE.md)
+## [License](https://raw.githubusercontent.com/mcbuehler/Seg2Eye/master/LICENSE.md)
 
 Copyright (C) 2019 NVIDIA Corporation.
 
