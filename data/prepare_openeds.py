@@ -1,3 +1,9 @@
+"""
+Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+
+Given the unzipped OpenEDS dataset in three folders ("Semantic_Segmentation_Dataset",
+"Generative_Dataset", "Sequence_Dataset"), this script converts it to an h5 file.
+"""
 import json
 import os
 
@@ -133,7 +139,9 @@ class OpenEDSPreparator:
 
 
 if __name__ == "__main__":
-    base_path = "/home/marcel/projects/data/openeds"
+    # Path to the folder containing the unzipped dataset folders:
+    # "Semantic_Segmentation_Dataset", "Generative_Dataset", "Sequence_Dataset"
+    base_path = "..."
     out_filename = "openeds.h5"
     limit = -1
     preparator = OpenEDSPreparator(base_path=base_path, verbose=True, limit=limit, n_jobs=4, out_filename=out_filename)

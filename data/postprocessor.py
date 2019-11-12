@@ -1,9 +1,15 @@
+"""
+Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+"""
 import numpy as np
 import torch
 import cv2
 
 
-class ImagePostprocessor:
+class ImageProcessor:
+    """
+    Class with various methods for modifying images and image tensors.
+    """
     eps = 1e-6
 
     @classmethod

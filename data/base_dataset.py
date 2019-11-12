@@ -2,7 +2,6 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
-import torch
 import torch.utils.data as data
 from PIL import Image
 import torchvision.transforms as transforms
@@ -141,9 +140,8 @@ def flip(img, flip):
     if flip:
         if isinstance(img, np.ndarray):
             # This is only for PIL images
-            # The right-left axis is always the last one. Make sure not to feed HWC images
+            # Make sure to feed images channel-first (CHW)
             axis = len(img.shape) - 1
-            # return np.flip(img, axis=axis)
             return np.array(np.flip(img, axis=axis))
         return img.transpose(Image.FLIP_LEFT_RIGHT)
     return img
