@@ -3,6 +3,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 import re
 
+from PIL import Image
 import h5py
 import numpy as np
 import torch
@@ -86,10 +87,11 @@ class OpenEDSDataset(BaseDataset):
         mask = self.h5_in[user][self.label_key][idx_target_image]
 
         params = get_params(self.opt, mask.shape)
-        transform_mask = get_transform(self.opt, params,  method=cv2.INTER_NEAREST, normalize=False)
+        transform_mask = get_transform(self.opt, params,  method=cv2.INTER_NEAREST, normalize=False, toTensor=False)
         # the toTensor method in transform will convert uint8 [0, 255]
-        # to foat [-1, 1], so we need to revert this.
-        mask_tensor = transform_mask(mask) * 255.0
+        # to float [-1, 1], so we need to revert this.
+
+        mask_tensor = torch.from_numpy(transform_mask(mask))
 
         filename = self.h5_in[user][self.key_filenames][idx_target_image].decode('utf-8')
         # Some filenames contain an additional dot, which we want to remove.
@@ -107,7 +109,7 @@ class OpenEDSDataset(BaseDataset):
         if self.dataset_key != "test":
             # We have ground truth images
             target_image = np.array(self.h5_in[user]["images_ss"][idx_target_image])
-            target_image_tensor = transform_image(target_image)
+            target_image_tensor = transform_image(Image.fromarray(target_image, mode="L"))
             # Only flip the target image now, otherwise it might be flipped twice
             target_image = flip(target_image, params['flip'])
             input_dict = {**input_dict,
@@ -201,6 +203,7 @@ class OpenEDSDataset(BaseDataset):
                 selected_idx[i] = sel_i
             style_images.append(self.h5_in[user_id][subset_key][sel_i])
 
+        style_images = [Image.fromarray(img, mode="L") for img in style_images]
         tensors = [transform_image(img) for img in style_images]
         style_image_tensor = torch.stack(tensors)
         return style_image_tensor, selected_idx, subsets

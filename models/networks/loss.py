@@ -7,9 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from data.postprocessor import ImagePostprocessor
-
-# from models.networks.architecture import VGG19
+from data.postprocessor import ImageProcessor
 
 
 # Defines the GAN loss which uses either LSGAN or the regular GAN.
@@ -101,28 +99,6 @@ class GANLoss(nn.Module):
             return self.loss(input, target_is_real, for_discriminator)
 
 
-# # Perceptual loss that uses a pretrained VGG network
-# class VGGLoss(nn.Module):
-#     def __init__(self, gpu_ids):
-#         super(VGGLoss, self).__init__()
-#         self.vgg = VGG19().cuda()
-#         self.criterion = nn.L1Loss()
-#         self.weights = [1.0 / 32, 1.0 / 16, 1.0 / 8, 1.0 / 4, 1.0]
-#
-#     def forward(self, x, y):
-#         x_vgg, y_vgg = self.vgg(x), self.vgg(y)
-#         loss = 0
-#         for i in range(len(x_vgg)):
-#             loss += self.weights[i] * self.criterion(x_vgg[i], y_vgg[i].detach())
-#         return loss
-
-
-# # KL Divergence loss used in VAE with an image encoder
-# class KLDLoss(nn.Module):
-#     def forward(self, mu, logvar):
-#         return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-
 def openEDSaccuracy(produced, target):
     produced = produced.float()
     target = target.float()
@@ -162,11 +138,10 @@ class MSECalculator:
         assert produced.shape == target.shape
         assert torch.min(produced) >= -1 and torch.max(produced) <= 1, f"Min: {torch.min(produced)}, max: {torch.max(produced)}"
         assert torch.min(target) >= -1 and torch.max(target) <= 1
-        # assert produced.shape[-2:] == (640, 400), f"Invalid shape: {produced.shape}"
         assert len(produced.shape) == 4, "Please feed 4D tensors"
 
-        produced = ImagePostprocessor.to_255imagebatch(produced)
-        target = ImagePostprocessor.to_255imagebatch(target)
+        produced = ImageProcessor.to_255imagebatch(produced)
+        target = ImageProcessor.to_255imagebatch(target)
 
         mse_error = list()
         # We compute the norm for each image and then normalise it
@@ -217,7 +192,6 @@ class StyleLoss(nn.Module):
 
     def __init__(self):
         super(StyleLoss, self).__init__()
-
 
     def forward(self, predicted_feature, target_feature):
         G_predicted = gram_matrix(predicted_feature)

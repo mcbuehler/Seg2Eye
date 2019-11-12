@@ -3,15 +3,15 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 
-import re
-import importlib
-import torch
-from argparse import Namespace
-import numpy as np
-from PIL import Image
-import os
 import argparse
+import importlib
+import os
+import re
+
 import dill as pickle
+import numpy as np
+import torch
+from PIL import Image
 from torch.nn import DataParallel
 
 

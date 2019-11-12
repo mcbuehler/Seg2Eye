@@ -7,7 +7,6 @@ import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.networks.sync_batchnorm import SynchronizedBatchNorm2d
 import torch.nn.utils.spectral_norm as spectral_norm
 
 
@@ -38,8 +37,6 @@ def get_nonspade_norm_layer(opt, norm_type='instance'):
 
         if subnorm_type == 'batch':
             norm_layer = nn.BatchNorm2d(get_out_channel(layer), affine=True)
-        elif subnorm_type == 'sync_batch':
-            norm_layer = SynchronizedBatchNorm2d(get_out_channel(layer), affine=True)
         elif subnorm_type == 'instance':
             norm_layer = nn.InstanceNorm2d(get_out_channel(layer), affine=False)
         else:
@@ -74,8 +71,6 @@ class SPADE(nn.Module):
 
         if param_free_norm_type == 'instance':
             self.param_free_norm = nn.InstanceNorm2d(norm_nc, affine=False)
-        elif param_free_norm_type == 'syncbatch':
-            self.param_free_norm = SynchronizedBatchNorm2d(norm_nc, affine=False)
         elif param_free_norm_type == 'batch':
             self.param_free_norm = nn.BatchNorm2d(norm_nc, affine=False)
         else:
@@ -175,19 +170,23 @@ class ApplyStyle(nn.Module):
 
 
 class SPADE_STYLE_Block(nn.Module):
+    """
+    SPADE+Style Block as introduced in
+    "Content-Consistent Generation of Realistic Eyes with Style" (Bühler et al. 2019)
+    """
     def __init__(self, fin, opt):
         super().__init__()
 
         spade_config_str = opt.norm_G.replace('spectral', '')
         self.spade = SPADE(spade_config_str, fin, opt.semantic_nc)
         self.adain = ApplyStyle(opt.w_dim, channels=fin, use_wscale=False)
-        self.combine_mode = opt.combine_mode
 
     def forward(self, x, segmap, latent_style):
+        # We compute the adaptive instance norm...
         output_adain = self.adain(x, latent_style)
-        # We compute adain and spade from input x and add the outputs of the two blocks
+        # and the spatially adaptive norm separately.
         output_spade = self.spade(x, segmap)
-        # Dividing by two weights both inputs equally, but helps with
-        # training stability.
+        # Both normalized outputs are combined by addition.
+        # Dividing by two helps with training stability.
         out = (output_spade + output_adain) / 2
         return out

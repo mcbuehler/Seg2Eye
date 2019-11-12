@@ -1,13 +1,3 @@
-"""
-Starting command:
-python test.py --name $name --dataset_mode openeds \
-    --dataroot $DATAROOT  --aspect_ratio 0.8 --no_instance \
-    --load_size 256 --crop_size 256 --preprocess_mode fixed --batchSize 24 \
-    --netG spade
-    --write_error_log \
-    --dataset_key train
-"""
-
 import os
 import re
 from copy import deepcopy
@@ -17,15 +7,14 @@ import numpy as np
 import torch
 
 import data
-from data.postprocessor import ImagePostprocessor
+from data.postprocessor import ImageProcessor
 from models.networks import MSECalculator
 from util.visualizer import Visualizer, visualize_sidebyside
 
 
 class Tester:
-    def __init__(self, opt, g_logger=None, dataset_key='test', visualizer=None):
+    def __init__(self, opt, dataset_key='test', visualizer=None):
         self.opt = deepcopy(opt)
-        self.g_logger = g_logger
 
         self.opt.serial_batches = True
         self.opt.no_flip = True
@@ -54,7 +43,7 @@ class Tester:
 
     def forward(self, model, data_i):
         fake = model.forward(data_i, mode="inference").detach().cpu()
-        fake_resized = ImagePostprocessor.to_255resized_imagebatch(fake, as_tensor=True)
+        fake_resized = ImageProcessor.to_255resized_imagebatch(fake, as_tensor=True)
         return fake, fake_resized
 
     def get_iterator(self, dataloader, indices=None):
@@ -102,7 +91,7 @@ class Tester:
 
     def run_batch(self, data_i, model):
         fake, fake_resized = self.forward(model, data_i)
-        target_image = ImagePostprocessor.as_batch(data_i["target_original"], as_tensor=True)
+        target_image = ImageProcessor.as_batch(data_i["target_original"], as_tensor=True)
         errors = np.array(MSECalculator.calculate_mse_for_images(fake_resized, target_image))
         return errors, fake, fake_resized, target_image
 
@@ -131,7 +120,7 @@ class Tester:
             error_log.close()
         return all_errors
 
-    def print_results(self, all_errors, errors_dict, epoch, n_steps):
+    def print_results(self, all_errors, errors_dict, epoch='n.a.', n_steps="n.a."):
         print("Validation Results")
         print("------------------")
         print(f"Error calculated on {len(all_errors)} / {self.dataloader.dataset.N} samples")
@@ -173,7 +162,7 @@ class Tester:
             raise ValueError(f"Invalid mode: {mode}")
         return validation_indices
 
-    def run(self, model, mode, epoch, n_steps, limit=-1, write_error_log=False, log=False):
+    def run(self, model, mode, epoch=None, n_steps=None, limit=-1, write_error_log=False, log=False):
         print(f"Running validation for mode '{mode}'...")
         limit = limit if limit > 0 else self.dataloader.dataset.N
         indices = self._get_validation_indices(mode, limit)
@@ -182,17 +171,11 @@ class Tester:
 
         errors_dict = MSECalculator.calculate_error_statistics(all_errors, mode=mode, dataset_key=self.opt.dataset_key)
         self.print_results(all_errors, errors_dict, epoch, n_steps)
-        self.log_gsheet(errors_dict, epoch, n_steps)
 
         if log:
             self.log_visualizer(errors_dict, epoch, n_steps)
 
-    def log_gsheet(self, errors_dict, epoch, n_steps):
-        if not self.opt.debug and self.g_logger is not None:
-            errors_dict = {**errors_dict, 'epoch': epoch, 'n_steps': n_steps}
-            self.g_logger.update_or_append_row(errors_dict)
-
-    def log_visualizer(self, errors_dict, epoch, total_steps_so_far):
+    def log_visualizer(self, errors_dict, epoch=0, total_steps_so_far=0):
         """
 
         Args:

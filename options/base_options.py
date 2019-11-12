@@ -22,9 +22,12 @@ class BaseOptions():
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
         parser.add_argument('--model', type=str, default='pix2pix', help='which model to use')
-        parser.add_argument('--norm_G', type=str, default='spectralspadesyncbatch3x3', help='instance normalization or batch normalization')
+        parser.add_argument('--norm_G', type=str, default='spectralspadebatch3x3', help='instance normalization or batch normalization')
         parser.add_argument('--norm_D', type=str, default='spectralinstance', help='instance normalization or batch normalization')
         parser.add_argument('--norm_E', type=str, default='spectralinstance', help='instance normalization or batch normalization')
+        parser.add_argument('--netG', type=str, default='spadestyle', help='Generator network')
+        parser.add_argument('--netD', type=str, default='multiscale', help='instance normalization or batch normalization')
+        parser.add_argument('--netE', type=str, default='conv', help='instance normalization or batch normalization')
 
         # input/output sizes
         parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
@@ -37,9 +40,7 @@ class BaseOptions():
         parser.add_argument('--output_nc', type=int, default=1, help='# of output image channels')
         parser.add_argument('--input_ns', type=int, default=4, help='Number of style inputs')
         parser.add_argument('--style_aggr_method', type=str, default='mean', help='Style aggregation method', choices=('mean', 'max'))
-        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first', 'ref_first', 'ref_random40', 'ref_random6', 'ref_random200', 'ref_random100', 'ref_random50'))
-        parser.add_argument('--use_z', action='store_true', help='Whether to use a z space or directly collapse to w')
-        # parser.add_argument('--output_wh', type=int, nargs='+', default=(400, 640), help='width and height of output image')
+        parser.add_argument('--style_sample_method', type=str, default='random', help='Style sample method', choices=('random', 'first', 'ref_first', 'ref_random100'))
 
         # for setting inputs
         parser.add_argument('--dataroot', type=str, required=True)
@@ -61,12 +62,7 @@ class BaseOptions():
         parser.add_argument('--w_dim', type=int, default=16, help='Dimensionality of the latent style vector w')
 
         parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')
-
-        parser.add_argument('--gsheet_secrets_json_file', default='config/gsheet.json', type=str, help='enable training with an image encoder.')
-
         self.initialized = True
-
-        # parser.set_defaults(no_flip=True)
         return parser
 
     def gather_options(self):

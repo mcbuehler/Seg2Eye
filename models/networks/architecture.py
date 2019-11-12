@@ -3,15 +3,17 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 import torch.nn.utils.spectral_norm as spectral_norm
-from models.networks.normalization import SPADE, ApplyStyle, SPADE_STYLE_Block
 
-# ResNet block that uses SPADE and StyleGAN AdaIN.
+from models.networks.normalization import SPADE_STYLE_Block
+
+
 class SPADE_STYLE_ResnetBlock(nn.Module):
+    """
+    ResNet block that uses SPADE and AdaIN.
+    """
     def __init__(self, fin, fout, opt):
         super().__init__()
         # Attributes

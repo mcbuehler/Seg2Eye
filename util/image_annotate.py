@@ -2,7 +2,7 @@ import cv2
 import torch
 import numpy as np
 
-from data.postprocessor import ImagePostprocessor
+from data.postprocessor import ImageProcessor
 
 
 def get_text_image(text, dim=(100, 30), fontscale=1):
@@ -21,5 +21,5 @@ def get_text_image(text, dim=(100, 30), fontscale=1):
         lineType)
     # Convert to tensor in range [-1, 1]
     img = torch.from_numpy(img).double()
-    img = ImagePostprocessor.normalize(img, as_tensor=True)
+    img = ImageProcessor.normalize(img, as_tensor=True)
     return img

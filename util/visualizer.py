@@ -11,7 +11,7 @@ from collections import OrderedDict
 import torch
 from PIL import Image
 
-from data.postprocessor import ImagePostprocessor
+from data.postprocessor import ImageProcessor
 from data.preprocessor import ImagePreprocessor
 from util.image_annotate import get_text_image
 from . import util
@@ -137,16 +137,16 @@ def visualize_sidebyside(data, limit=-1, key_fake='fake', key_content='label', k
         for key in data:
             data[key] = data[key][:limit]
 
-    content = ImagePostprocessor.to_1resized_imagebatch(data[key_content], w, h, as_tensor=True)
-    fake = ImagePostprocessor.to_1resized_imagebatch(data[key_fake], w, h, as_tensor=True)
-    target = ImagePostprocessor.to_1resized_imagebatch(data[key_target], w, h, as_tensor=True)
+    content = ImageProcessor.to_1resized_imagebatch(data[key_content], w, h, as_tensor=True)
+    fake = ImageProcessor.to_1resized_imagebatch(data[key_fake], w, h, as_tensor=True)
+    target = ImageProcessor.to_1resized_imagebatch(data[key_target], w, h, as_tensor=True)
     if len(data[key_style].shape) == 5:
         # We have multiple style images. Let's take max 4 per sample and create a grid for each sample
         style_grids = [make_grid(data[key_style][i, :4], nrow=2, padding=0) for i in range(data[key_style].shape[0])]
         data[key_style] = torch.mean(torch.stack(style_grids, dim=0), dim=1).unsqueeze(1)
-    style = ImagePostprocessor.to_1resized_imagebatch(data[key_style], w, h, as_tensor=True)
+    style = ImageProcessor.to_1resized_imagebatch(data[key_style], w, h, as_tensor=True)
     # error_heatmap = torch.pow(fake - target, 2)
-    error_heatmap = ImagePostprocessor.get_error_map(fake, target)
+    error_heatmap = ImageProcessor.get_error_map(fake, target)
     for i in range(len(data[key_fake])):
         cat_val = torch.cat((style[i], content[i], target[i], fake[i], error_heatmap[i]), dim=-1)
 

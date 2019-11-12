@@ -10,7 +10,6 @@ import models.networks as networks
 import util.util as util
 
 
-
 class Pix2PixModel(torch.nn.Module):
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -37,8 +36,6 @@ class Pix2PixModel(torch.nn.Module):
             self.criterionOpenEDS = MSECalculator.calculate_mse_for_tensors
             if not opt.no_vgg_loss:
                 self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
-            if opt.use_vae:
-                self.KLDLoss = networks.KLDLoss()
             if opt.lambda_style_feat > 0:
                 # loss on style feature maps
                 self.criterion_style_feat = nn.MSELoss()
@@ -85,7 +82,7 @@ class Pix2PixModel(torch.nn.Module):
                     print("Using given latent style...")
                     fake_image = self.generate_fake_from_stylecode(input_semantics, data['latent_style'])
                 else:
-                    fake_image, _, _, _ = self.generate_fake(input_semantics, style_image)
+                    fake_image, _, _ = self.generate_fake(input_semantics, style_image)
                 # We don't want to track our losses here as it could confound with training losses
                 self.reset_loss_log()
             return fake_image
@@ -189,12 +186,8 @@ class Pix2PixModel(torch.nn.Module):
     def compute_generator_loss(self, input_semantics, style_image, target_image):
         G_losses = {}
 
-        fake_image, KLD_loss, latent_style_real, style_features_real = self.generate_fake(
-            input_semantics, style_image, compute_kld_loss=self.opt.use_vae)
-
-        if self.opt.use_vae:
-            G_losses['KLD'] = KLD_loss
-
+        fake_image, latent_style_real, style_features_real = self.generate_fake(
+            input_semantics, style_image)
         pred_fake, pred_real = self.discriminate(input_semantics, fake_image, target_image)
 
         G_losses['GAN'] = self.criterionGAN(pred_fake, True,
@@ -256,7 +249,7 @@ class Pix2PixModel(torch.nn.Module):
     def compute_discriminator_loss(self, input_semantics, real_image, target_image):
         D_losses = {}
         with torch.no_grad():
-            fake_image, _ , _, _ = self.generate_fake(input_semantics, real_image)
+            fake_image, _, _ = self.generate_fake(input_semantics, real_image)
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
 
@@ -293,20 +286,8 @@ class Pix2PixModel(torch.nn.Module):
         mu, logvar, features = zip(*result)
         outputs_netE_tensor = torch.stack(mu, dim=0)
 
-        # batchSize, input_ns, z_dim if opt.use_z else w_dim
-        if self.opt.use_z:
-            assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.z_dim)
-        else:
-            assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.w_dim)
+        assert outputs_netE_tensor.shape == (*real_image.shape[:2], self.opt.w_dim)
         return outputs_netE_tensor, features
-
-    def _compute_aggregated_z(self, real_image):
-        assert self.opt.use_z, "You need to set use_z to True"
-        # We have several style images per input sample
-        multiple_z, features = self._compute_multiple_netE(real_image)
-        z = self._aggregate_tensor(multiple_z)
-        assert z.shape == (real_image.shape[0], self.opt.z_dim)
-        return z, features
 
     def _compute_aggregated_w(self, real_image):
         # We have several style images per input sample
@@ -336,14 +317,10 @@ class Pix2PixModel(torch.nn.Module):
         fake_image = self.netG(input_semantics, latent_style)
         return fake_image
 
-    def generate_fake(self, input_semantics, style_image, compute_kld_loss=False):
-        KLD_loss = None
+    def generate_fake(self, input_semantics, style_image):
         latent_style, features = self.encode_w(style_image)
         fake_image = self.generate_fake_from_stylecode(input_semantics, latent_style)
-        assert (not compute_kld_loss) or self.opt.use_vae, \
-            "You cannot compute KLD loss if opt.use_vae == False"
-
-        return fake_image, KLD_loss, latent_style, features
+        return fake_image, latent_style, features
 
     # Given fake and real image, return the prediction of discriminator
     # for each fake and real image.

@@ -1,6 +1,9 @@
 """
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+
+Example starting command:
+python train.py --dataroot PATH_TO_H5_FILE
 """
 import os
 import sys
@@ -12,26 +15,15 @@ import data
 from options.train_options import TrainOptions
 from trainers.pix2pix_trainer import Pix2PixTrainer
 from util.files import copy_src
-from util.gsheet import GoogleSheetLogger
 from util.iter_counter import IterationCounter
 from util.tester import Tester
 from util.visualizer import Visualizer
 
-# os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # parse options
 opt = TrainOptions().parse()
 
-
-opt.display_freq = 1
-opt.print_freq = 1
-opt.validation_limit = 1
-
+# We copy the source code in order to easily re-run experiments
 copy_src(path_from='./', path_to=os.path.join(opt.checkpoints_dir, opt.name))
-
-g_logger = GoogleSheetLogger(opt)
-
-# print options to help debugging
-print(' '.join(sys.argv))
 
 # load the dataset
 dataloader = data.create_dataloader(opt)
@@ -42,15 +34,14 @@ dataloader_val = data.create_inference_dataloader(opt)
 # create trainer for our model
 trainer = Pix2PixTrainer(opt)
 
-
 # create tool for counting iterations
 iter_counter = IterationCounter(opt, len(dataloader))
 
 # create tool for visualization
 visualizer = Visualizer(opt)
 
-tester_train = Tester(opt, g_logger, dataset_key='train', visualizer=visualizer)
-tester_validation = Tester(opt, g_logger, dataset_key='validation', visualizer=visualizer)
+tester_train = Tester(opt, dataset_key='train', visualizer=visualizer)
+tester_validation = Tester(opt, dataset_key='validation', visualizer=visualizer)
 
 try:
     for epoch in iter_counter.training_epochs():

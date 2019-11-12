@@ -97,3 +97,7 @@ If you use this code for your research, please cite our papers.
 This repository is a fork of the original [SPADE implementation](https://github.com/NVlabs/SPADE), which borrows heavily from pix2pixHD. We thank Jiayuan Mao for his Synchronized Batch Normalization code.
 
 
+
+Please note:
+
+* This implementation currently does not support multi-GPU training.
