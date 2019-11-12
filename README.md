@@ -4,6 +4,8 @@
 # Content-Consistent Generation of Realistic Eyes with Style
 [Project page](https://ait.ethz.ch/projects/2019/seg2eye/) |  [Paper](https://arxiv.org/abs/1911.03346)
 
+This README describes the Seg2Eye model. For the Refiner model, please have a look at [this folder](refinenet/).
+
 ## Abstract
 Accurately labeled real-world training data can be scarce, and hence recent
  works adapt, modify or generate images to boost target datasets.
@@ -25,8 +27,7 @@ Accurately labeled real-world training data can be scarce, and hence recent
 
 [VR and AR Workshop](https://research.fb.com/programs/the-2019-openeds-workshop-eye-tracking-for-vr-and-ar/) at [ICCV 2019](http://iccv2019.thecvf.com/)
 
-
-## Architecture
+## Seg2Eye Architecture
 
 For details, please refer to our [Paper](https://arxiv.org/abs/1911.03346).
 
