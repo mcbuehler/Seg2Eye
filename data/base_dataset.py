@@ -2,12 +2,12 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
-
 import torch.utils.data as data
 from PIL import Image
 import torchvision.transforms as transforms
 import numpy as np
 import random
+import cv2
 
 
 class BaseDataset(data.Dataset):
@@ -40,7 +40,10 @@ def get_params(opt, size):
     x = random.randint(0, np.maximum(0, new_w - opt.crop_size))
     y = random.randint(0, np.maximum(0, new_h - opt.crop_size))
 
-    flip = random.random() > 0.5
+    if opt.no_flip:
+        flip = False
+    else:
+        flip = random.random() > 0.5
     return {'crop_pos': (x, y), 'flip': flip}
 
 
@@ -67,14 +70,13 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         transform_list.append(transforms.Lambda(lambda img: __resize(img, w, h, method)))
 
     if opt.isTrain and not opt.no_flip:
-        transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+        transform_list.append(transforms.Lambda(lambda img: flip(img, params['flip'])))
 
     if toTensor:
         transform_list += [transforms.ToTensor()]
 
     if normalize:
-        transform_list += [transforms.Normalize((0.5, 0.5, 0.5),
-                                                (0.5, 0.5, 0.5))]
+        transform_list += [transforms.Normalize((0.5,), (0.5,))]
     return transforms.Compose(transform_list)
 
 
@@ -83,20 +85,32 @@ def normalize():
 
 
 def __resize(img, w, h, method=Image.BICUBIC):
+    if isinstance(img, np.ndarray):
+        return cv2.resize(img, (w, h), interpolation=method)
     return img.resize((w, h), method)
 
 
+def __get_shape_from_size_or_shape(img):
+    if hasattr(img, "shape"):
+        ow, oh = img.shape[:2]
+    else:
+        ow, oh = img.size
+    return ow, oh
+
+
 def __make_power_2(img, base, method=Image.BICUBIC):
-    ow, oh = img.size
+    ow, oh = __get_shape_from_size_or_shape(img)
     h = int(round(oh / base) * base)
     w = int(round(ow / base) * base)
     if (h == oh) and (w == ow):
         return img
+    if isinstance(img, np.ndarray):
+        return cv2.resize(img, (w, h), interpolation=cv2.INTER_CUBIC)
     return img.resize((w, h), method)
 
 
 def __scale_width(img, target_width, method=Image.BICUBIC):
-    ow, oh = img.size
+    ow, oh = __get_shape_from_size_or_shape(img)
     if (ow == target_width):
         return img
     w = target_width
@@ -105,7 +119,7 @@ def __scale_width(img, target_width, method=Image.BICUBIC):
 
 
 def __scale_shortside(img, target_width, method=Image.BICUBIC):
-    ow, oh = img.size
+    ow, oh = __get_shape_from_size_or_shape(img)
     ss, ls = min(ow, oh), max(ow, oh)  # shortside and longside
     width_is_shorter = ow == ss
     if (ss == target_width):
@@ -122,7 +136,12 @@ def __crop(img, pos, size):
     return img.crop((x1, y1, x1 + tw, y1 + th))
 
 
-def __flip(img, flip):
+def flip(img, flip):
     if flip:
+        if isinstance(img, np.ndarray):
+            # This is only for PIL images
+            # Make sure to feed images channel-first (CHW)
+            axis = len(img.shape) - 1
+            return np.array(np.flip(img, axis=axis))
         return img.transpose(Image.FLIP_LEFT_RIGHT)
     return img

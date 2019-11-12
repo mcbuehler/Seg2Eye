@@ -1,0 +1,2 @@
+python analysis/interpolation.py --dataroot $DR --dataset_key $DK --name 190925_spadestyle_size256_l2_15_lambda_w_0.5_lambda_feat_0.001_lambda_gram_10000_w16___spadeStyleGen_cmadd_ns4_SAMmax_SSMref_random100 --w_dim 16 --spadeStyleGen
+

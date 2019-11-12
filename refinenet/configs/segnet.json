@@ -1,0 +1,30 @@
+{
+    "use_apex": false,
+    "base_learning_rate": 0.005,
+    "weight_decay": 0.0005,
+    "batch_size": 8,
+
+    "num_epochs": 100,
+    "num_warmup_epochs": 0,
+
+    "lr_decay_strategy": "none",
+    "lr_decay_epoch_interval": 5,
+    "lr_decay_factor": 0.8,
+    "gradient_norm_clip": -0.1,
+
+    "train_data_workers": 2,
+
+    "test_batch_size": 32,
+    "test_data_workers": 2,
+    "test_every_n_steps": 200,
+    "test_num_samples": 256,
+
+    "track_running_stats": true,
+
+    "fully_reproducible": false,
+    "log_every_n_steps": 20,
+    "checkpoints_keep_n": 3,
+    "tensorboard_images_every_n_steps": 100,
+    "tensorboard_learning_rate_every_n_steps": 100,
+    "tensorboard_scalars_every_n_steps": 20
+}

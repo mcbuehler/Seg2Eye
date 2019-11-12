@@ -3,3 +3,8 @@ torchvision
 dominate>=2.3.1
 dill
 scikit-image
+opencv-python
+h5py
+tensorboardX
+tensorflow
+oauth2client>=4.1.3

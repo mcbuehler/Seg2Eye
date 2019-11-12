@@ -1,45 +1,29 @@
 """
-Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
-Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+Example usage:
+python test.py --dataroot PATH_TO_H5_FILE --name CHECKPOINT_NAME \
+    --dataset_key VALIDATION|TEST --load_from_opt_file
+
 """
 
-import os
-from collections import OrderedDict
-
 import data
-from options.test_options import TestOptions
 from models.pix2pix_model import Pix2PixModel
-from util.visualizer import Visualizer
-from util import html
+from options.test_options import TestOptions
+from util.tester import Tester
 
-opt = TestOptions().parse()
+if __name__ == "__main__":
+    opt = TestOptions().parse()
+    # load the dataset
+    dataloader = data.create_dataloader(opt)
 
-dataloader = data.create_dataloader(opt)
+    tester = Tester(opt, dataset_key=opt.dataset_key)
 
-model = Pix2PixModel(opt)
-model.eval()
+    model = Pix2PixModel(opt)
+    # model = Pix2PixModel(opt)
+    if opt.dataset_key in ['validation', 'train'] and not opt.produce_npy:
+        # Iterates through the entire dataset and computes MSE error
+        tester.run(model, mode='full', write_error_log=opt.write_error_log)
+    else:
+        # Produces npy files with predictions
+        print("Running inference")
+        tester.run_test(model)
 
-visualizer = Visualizer(opt)
-
-# create a webpage that summarizes the all results
-web_dir = os.path.join(opt.results_dir, opt.name,
-                       '%s_%s' % (opt.phase, opt.which_epoch))
-webpage = html.HTML(web_dir,
-                    'Experiment = %s, Phase = %s, Epoch = %s' %
-                    (opt.name, opt.phase, opt.which_epoch))
-
-# test
-for i, data_i in enumerate(dataloader):
-    if i * opt.batchSize >= opt.how_many:
-        break
-
-    generated = model(data_i, mode='inference')
-
-    img_path = data_i['path']
-    for b in range(generated.shape[0]):
-        print('process image... %s' % img_path[b])
-        visuals = OrderedDict([('input_label', data_i['label'][b]),
-                               ('synthesized_image', generated[b])])
-        visualizer.save_images(webpage, visuals, img_path[b:b + 1])
-
-webpage.save()

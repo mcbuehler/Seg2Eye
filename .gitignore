@@ -5,3 +5,15 @@ results/
 *.zip
 *.pkl
 *.pyc
+
+OpenEDS*.json
+*.ttf
+
+debug.py
+models/networks/Synchronized-BatchNorm-PyTorch/
+models/networks/sync_batchnorm/
+util/find_by_filename.py
+scripts/create_json_regen.py
+config
+checkpoints_pupil/
+scripts/env_aitdesktop.sh

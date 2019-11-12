@@ -1,139 +1,103 @@
 [![License CC BY-NC-SA 4.0](https://img.shields.io/badge/license-CC4.0-blue.svg)](https://raw.githubusercontent.com/nvlabs/SPADE/master/LICENSE.md)
 ![Python 3.6](https://img.shields.io/badge/python-3.6-green.svg)
 
-# Semantic Image Synthesis with SPADE
-![GauGAN demo](https://nvlabs.github.io/SPADE//images/ocean.gif)
+# Content-Consistent Generation of Realistic Eyes with Style
+[Project page](https://ait.ethz.ch/projects/2019/seg2eye/) |  [Paper](https://arxiv.org/abs/1911.03346)
 
-### [Project page](https://nvlabs.github.io/SPADE/) |   [Paper](https://arxiv.org/abs/1903.07291) | [Online Interactive Demo of GauGAN](https://www.nvidia.com/en-us/research/ai-playground/) | [GTC 2019 demo](https://youtu.be/p5U4NgVGAwg) | [Youtube Demo of GauGAN](https://youtu.be/MXWm6w4E5q0)
+This README describes the Seg2Eye model. For the Refiner model, please have a look at [this folder](refinenet/).
 
-Semantic Image Synthesis with Spatially-Adaptive Normalization.<br>
-[Taesung Park](http://taesung.me/),  [Ming-Yu Liu](http://mingyuliu.net/), [Ting-Chun Wang](https://tcwang0509.github.io/),  and [Jun-Yan Zhu](http://people.csail.mit.edu/junyanz/).<br>
-In CVPR 2019 (Oral).
+## Abstract
+Accurately labeled real-world training data can be scarce, and hence recent
+ works adapt, modify or generate images to boost target datasets.
+ However, retaining relevant details from input data in the generated images
+ is challenging and failure could be critical to the performance on the final
+ task. In this work, we synthesize person-specific eye images that satisfy a
+ given semantic segmentation mask (content), while following the style of a
+ specified person from only a few reference images. We introduce two
+ approaches, (a) one used to win the
+ [OpenEDS Synthetic Eye Generation Challenge](https://research.fb.com/programs/openeds-challenge)
+ at [ICCVW 2019](http://iccv2019.thecvf.com/), and (b) a
+ principled approach to solving the problem involving simultaneous injection
+ of style and content information at multiple scales.
 
-### [License](https://raw.githubusercontent.com/nvlabs/SPADE/master/LICENSE.md)
+<img target="_blank" title="Style Interpolation Demo" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/interpolation_single.gif" width="100">
 
-Copyright (C) 2019 NVIDIA Corporation.
+[Marcel C. Bühler](http://mcbuehler.ch), [Seonwook Park](https://ait.ethz.ch/people/spark/), [Shalini De Mello](https://research.nvidia.com/person/shalini-gupta),
+[Xucong Zhang](https://ait.ethz.ch/people/zhang/), [Otmar Hilliger](https://ait.ethz.ch/people/hilliges/)
 
-All rights reserved.
-Licensed under the [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode) (**Attribution-NonCommercial-ShareAlike 4.0 International**)
+[VR and AR Workshop](https://research.fb.com/programs/the-2019-openeds-workshop-eye-tracking-for-vr-and-ar/) at [ICCV 2019](http://iccv2019.thecvf.com/)
 
-The code is released for academic research use only. For commercial use, please contact [researchinquiries@nvidia.com](researchinquiries@nvidia.com).
+## Seg2Eye Architecture
 
-## Installation
+For details, please refer to our [Paper](https://arxiv.org/abs/1911.03346).
 
-Clone this repo.
-```bash
-git clone https://github.com/NVlabs/SPADE.git
-cd SPADE/
+<img target="_blank" title="High-Level Architecture" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/spadestyle_highlevel.png" width="200">
+<img target="_blank" title="SPADE+Style Block" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/spadestyleblock_clean.png" width="200">
+
+## Usage
+### Dataset Preparation
+
+1. You need access to the OpenEDS Dataset. Please find more information [here](https://research.fb.com/programs/openeds-challenge).
+
+2. Unzip all folders and set the `base_path` to the root folder containing the unpacked subfolders. This folder should also contain the json files with the mappings of file to users (_OpenEDS_{train,validation,test}_userID_mapping_to_images.json_).
+
+In 'data/prepare_openeds.py', update the 'base_path = "..."' with the path to the unzipped OpenEDS Dataset. Then run
+```
+python data/prepare_openeds.py
+```
+This will produce an H5 file that you can use to train or test Seg2Eye models.
+
+### Training New Models
+Run
+```
+python train.py --dataroot PATH_TO_H5_FILE
 ```
 
-This code requires PyTorch 1.0 and python 3+. Please install dependencies by
-```bash
-pip install -r requirements.txt
+Please note:
+
+* This implementation currently does not support multi-GPU training.
+
+### Testing
+```
+python test.py --dataroot PATH_TO_H5_FILE --name CHECKPOINT_NAME \
+    --dataset_key VALIDATION|TEST --load_from_opt_file
 ```
 
-This code also requires the Synchronized-BatchNorm-PyTorch rep.
-```
-cd models/networks/
-git clone https://github.com/vacancy/Synchronized-BatchNorm-PyTorch
-cp -rf Synchronized-BatchNorm-PyTorch/sync_batchnorm .
-cd ../../
-```
-
-To reproduce the results reported in the paper, you would need an NVIDIA DGX1 machine with 8 V100 GPUs.
-
-## Dataset Preparation
-
-For COCO-Stuff, Cityscapes or ADE20K, the datasets must be downloaded beforehand. Please download them on the respective webpages. In the case of COCO-stuff, we put a few sample images in this code repo.
-
-**Preparing COCO-Stuff Dataset**. The dataset can be downloaded [here](https://github.com/nightrome/cocostuff). In particular, you will need to download train2017.zip, val2017.zip, stuffthingmaps_trainval2017.zip, and annotations_trainval2017.zip. The images, labels, and instance maps should be arranged in the same directory structure as in `datasets/coco_stuff/`. In particular, we used an instance map that combines both the boundaries of "things instance map" and "stuff label map". To do this, we used a simple script `datasets/coco_generate_instance_map.py`. Please install `pycocotools` using `pip install pycocotools` and refer to the script to generate instance maps.
-
-**Preparing ADE20K Dataset**. The dataset can be downloaded [here](http://data.csail.mit.edu/places/ADEchallenge/ADEChallengeData2016.zip), which is from [MIT Scene Parsing BenchMark](http://sceneparsing.csail.mit.edu/). After unzipping the datgaset, put the jpg image files `ADEChallengeData2016/images/` and png label files `ADEChallengeData2016/annotatoins/` in the same directory. 
-
-There are different modes to load images by specifying `--preprocess_mode` along with `--load_size`. `--crop_size`. There are options such as `resize_and_crop`, which resizes the images into square images of side length `load_size` and randomly crops to `crop_size`. `scale_shortside_and_crop` scales the image to have a short side of length `load_size` and crops to `crop_size` x `crop_size` square. To see all modes, please use `python train.py --help` and take a look at `data/base_dataset.py`. By default at the training phase, the images are randomly flipped horizontally. To prevent this use `--no_flip`.
-
-## Generating Images Using Pretrained Model
-
-Once the dataset is ready, the result images can be generated using pretrained models.
-
-1. Download the tar of the pretrained models from the [Google Drive Folder](https://drive.google.com/file/d/12gvlTbMvUcJewQlSEaZdeb2CdOB-b8kQ/view?usp=sharing), save it in 'checkpoints/', and run
-
-    ```
-    cd checkpoints
-    tar xvf checkpoints.tar.gz
-    cd ../
-    ```
-
-2. Generate images using the pretrained model.
-    ```bash
-    python test.py --name [type]_pretrained --dataset_mode [dataset] --dataroot [path_to_dataset]
-    ```
-    `[type]_pretrained` is the directory name of the checkpoint file downloaded in Step 1, which should be one of `coco_pretrained`, `ade20k_pretrained`, and `cityscapes_pretrained`. `[dataset]` can be one of `coco`, `ade20k`, and `cityscapes`, and `[path_to_dataset]`, is the path to the dataset. If you are running on CPU mode, append `--gpu_ids -1`.
-
-3. The outputs images are stored at `./results/[type]_pretrained/` by default. You can view them using the autogenerated HTML file in the directory.
-
-## Generating Landscape Image using GauGAN
-
-In the paper and the demo video, we showed GauGAN, our interactive app that generates realistic landscape images from the layout users draw. The model was trained on landscape images scraped from Flickr.com. We released an online demo that has the same features. Please visit [https://www.nvidia.com/en-us/research/ai-playground/](https://www.nvidia.com/en-us/research/ai-playground/). The model weights are not released. 
-
-## Training New Models
-
-New models can be trained with the following commands.
-
-1. Prepare dataset. To train on the datasets shown in the paper, you can download the datasets and use `--dataset_mode` option, which will choose which subclass of `BaseDataset` is loaded. For custom datasets, the easiest way is to use `./data/custom_dataset.py` by specifying the option `--dataset_mode custom`, along with `--label_dir [path_to_labels] --image_dir [path_to_images]`. You also need to specify options such as `--label_nc` for the number of label classes in the dataset, `--contain_dontcare_label` to specify whether it has an unknown label, or `--no_instance` to denote the dataset doesn't have instance maps.
-
-2. Train.
-
-```bash
-# To train on the Facades or COCO dataset, for example.
-python train.py --name [experiment_name] --dataset_mode facades --dataroot [path_to_facades_dataset]
-python train.py --name [experiment_name] --dataset_mode coco --dataroot [path_to_coco_dataset]
-
-# To train on your own custom dataset
-python train.py --name [experiment_name] --dataset_mode custom --label_dir [path_to_labels] -- image_dir [path_to_images] --label_nc [num_labels]
-```
-
-There are many options you can specify. Please use `python train.py --help`. The specified options are printed to the console. To specify the number of GPUs to utilize, use `--gpu_ids`. If you want to use the second and third GPUs for example, use `--gpu_ids 1,2`.
-
-To log training, use `--tf_log` for Tensorboard. The logs are stored at `[checkpoints_dir]/[name]/logs`.
-
-## Testing
-
-Testing is similar to testing pretrained models.
-
-```bash
-python test.py --name [name_of_experiment] --dataset_mode [dataset_mode] --dataroot [path_to_dataset]
-```
-
-Use `--results_dir` to specify the output directory. `--how_many` will specify the maximum number of images to generate. By default, it loads the latest checkpoint. It can be changed using `--which_epoch`.
-
-## Code Structure
+### Code Structure
 
 - `train.py`, `test.py`: the entry point for training and testing.
 - `trainers/pix2pix_trainer.py`: harnesses and reports the progress of training.
 - `models/pix2pix_model.py`: creates the networks, and compute the losses
 - `models/networks/`: defines the architecture of all models
 - `options/`: creates option lists using `argparse` package. More individuals are dynamically added in other files as well. Please see the section below.
-- `data/`: defines the class for loading images and label maps.
+- `data/`: defines the class for loading and processing data.
 
-## Options
+## [License](https://raw.githubusercontent.com/mcbuehler/Seg2Eye/master/LICENSE.md)
 
-This code repo contains many options. Some options belong to only one specific model, and some options have different default values depending on other options. To address this, the `BaseOption` class dynamically loads and sets options depending on what model, network, and datasets are used. This is done by calling the static method `modify_commandline_options` of various classes. It takes in the`parser` of `argparse` package and modifies the list of options. For example, since COCO-stuff dataset contains a special label "unknown", when COCO-stuff dataset is used, it sets `--contain_dontcare_label` automatically at `data/coco_dataset.py`. You can take a look at `def gather_options()` of `options/base_options.py`, or `models/network/__init__.py` to get a sense of how this works.
+Copyright (C) 2019 NVIDIA Corporation.
 
-## VAE-Style Training with an Encoder For Style Control and Multi-Modal Outputs
+All rights reserved.
+Licensed under the [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode) (**Attribution-NonCommercial-ShareAlike 4.0 International**)
 
-To train our model along with an image encoder to enable multi-modal outputs as in Figure 15 of the [paper](https://arxiv.org/pdf/1903.07291.pdf), please use `--use_vae`. The model will create `netE` in addition to `netG` and `netD` and train with KL-Divergence loss.
+The code is released for academic research use only.
 
-### Citation
-If you use this code for your research, please cite our papers.
+
+## Citation
+If you reference our work, please cite our paper.
 ```
-@inproceedings{park2019SPADE,
-  title={Semantic Image Synthesis with Spatially-Adaptive Normalization},
-  author={Park, Taesung and Liu, Ming-Yu and Wang, Ting-Chun and Zhu, Jun-Yan},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
-  year={2019}
+@inproceedings{Buehler2019ICCVW,
+  author    = {Marcel C. Buehler and Seonwook Park and Shalini De Mello and Xucong Zhang and Otmar Hilliges},
+  title     = {Content-Consistent Generation of Realistic Eyes with Style},
+  year      = {2019},
+  booktitle = {International Conference on Computer Vision Workshops (ICCVW)},
+  location  = {Seoul, Korea}
 }
 ```
 
+
 ## Acknowledgments
-This code borrows heavily from pix2pixHD. We thank Jiayuan Mao for his Synchronized Batch Normalization code.
+This repository is a fork of the original [SPADE](https://github.com/NVlabs/SPADE) implementation.
+
+This work was supported in part by the ERC Grant OPTINT (StG-2016-717054).
+
+

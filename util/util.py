@@ -3,16 +3,16 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 
-import re
-import importlib
-import torch
-from argparse import Namespace
-import numpy as np
-from PIL import Image
-import os
 import argparse
+import importlib
+import os
+import re
+
 import dill as pickle
-import util.coco
+import numpy as np
+import torch
+from PIL import Image
+from torch.nn import DataParallel
 
 
 def save_obj(obj, name):
@@ -200,12 +200,24 @@ def save_network(net, label, epoch, opt):
         net.cuda()
 
 
-def load_network(net, label, epoch, opt):
+def load_network(net, label, epoch, opt, save_dir=None):
+    if save_dir is None:
+        save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+
     save_filename = '%s_net_%s.pth' % (epoch, label)
-    save_dir = os.path.join(opt.checkpoints_dir, opt.name)
     save_path = os.path.join(save_dir, save_filename)
     weights = torch.load(save_path)
+    if isinstance(net, DataParallel):
+        one_key = "".join(list(weights.keys()))
+        # Hacky way of seeing whether weights were saved under module.X or X.
+        if not 'module' in one_key:
+            # We have to add the module prefix
+            weights = {f"module.{key}": value for key, value in weights.items()}
     net.load_state_dict(weights)
+
+    if len(opt.gpu_ids) and torch.cuda.is_available():
+        net.cuda()
+    print(f"Loaded network from {save_path} for epoch {epoch}")
     return net
 
 
@@ -259,19 +271,21 @@ def labelcolormap(N):
     return cmap
 
 
-class Colorize(object):
-    def __init__(self, n=35):
-        self.cmap = labelcolormap(n)
-        self.cmap = torch.from_numpy(self.cmap[:n])
+def print_tensor_stats(tensor):
+    print(f"dim: {tensor.shape}")
+    print(f"min / max: {torch.min(tensor)} / {torch.max(tensor)}")
+    print(f"mean: {torch.mean(tensor.float())}")
 
-    def __call__(self, gray_image):
-        size = gray_image.size()
-        color_image = torch.ByteTensor(3, size[1], size[2]).fill_(0)
 
-        for label in range(0, len(self.cmap)):
-            mask = (label == gray_image[0]).cpu()
-            color_image[0][mask] = self.cmap[label][0]
-            color_image[1][mask] = self.cmap[label][1]
-            color_image[2][mask] = self.cmap[label][2]
+def print_h5_tree(group, prefix='', limit=-1):
+    if hasattr(group, 'keys'):
+        keys = list(group.keys())
+        for i, key in enumerate(keys):
+            print(f"{prefix}{key}")
+            print_h5_tree(group[key], prefix=prefix+'--', limit=-1)
+            if i >= limit > 0:
+                break
+    else:
+        print(f"{prefix}{group.shape}")
 
-        return color_image
+
