@@ -8,7 +8,7 @@ results/
 
 OpenEDS*.json
 *.ttf
-*.png
+
 debug.py
 models/networks/Synchronized-BatchNorm-PyTorch/
 models/networks/sync_batchnorm/
