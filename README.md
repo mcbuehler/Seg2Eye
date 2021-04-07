@@ -20,7 +20,7 @@ Accurately labeled real-world training data can be scarce, and hence recent
  principled approach to solving the problem involving simultaneous injection
  of style and content information at multiple scales.
 
-<img target="_blank" title="Style Interpolation Demo" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/interpolation_single.gif" width="100">
+<img target="_blank" title="Style Interpolation Demo" src="https://github.com/mcbuehler/Seg2Eye/raw/master/docs/interpolation_single.gif" width="100">
 
 [Marcel C. Bühler](http://mcbuehler.ch), [Seonwook Park](https://ait.ethz.ch/people/spark/), [Shalini De Mello](https://research.nvidia.com/person/shalini-gupta),
 [Xucong Zhang](https://ait.ethz.ch/people/zhang/), [Otmar Hilliges](https://ait.ethz.ch/people/hilliges/)
@@ -31,8 +31,8 @@ Accurately labeled real-world training data can be scarce, and hence recent
 
 For details, please refer to our [Paper](https://arxiv.org/abs/1911.03346).
 
-<img target="_blank" title="High-Level Architecture" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/spadestyle_highlevel.png" width="200">
-<img target="_blank" title="SPADE+Style Block" src="https://github.com/mcbuehler/Seg2Eye/raw/clean/docs/spadestyleblock_clean.png" width="200">
+<img target="_blank" title="High-Level Architecture" src="https://github.com/mcbuehler/Seg2Eye/raw/master/docs/spadestyle_highlevel.png" width="200">
+<img target="_blank" title="SPADE+Style Block" src="https://github.com/mcbuehler/Seg2Eye/raw/master/docs/spadestyleblock_clean.png" width="200">
 
 ## Usage
 ### Dataset Preparation
