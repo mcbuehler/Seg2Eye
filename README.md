@@ -2,7 +2,7 @@
 ![Python 3.6](https://img.shields.io/badge/python-3.6-green.svg)
 
 # Content-Consistent Generation of Realistic Eyes with Style
-[Project page](https://ait.ethz.ch/projects/2019/seg2eye/) |  [Paper](https://arxiv.org/abs/1911.03346)
+[Project page](https://ait.ethz.ch/seg2eye) |  [Paper](https://arxiv.org/abs/1911.03346)
 
 This README describes the Seg2Eye model. For the Refiner model, please have a look at [this folder](refinenet/).
 
