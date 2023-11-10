@@ -11,4 +11,4 @@ apex
 h5py==2.10.0
 pillow==6.1.0
 torchvision==0.4.0
-torch==1.2.0
+torch==1.13.1
